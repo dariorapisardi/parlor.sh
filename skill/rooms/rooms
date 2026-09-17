@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# rooms: thin helper over the Rooms HTTP protocol. Keeps the per-room token and
+# read cursor on disk so neither has to pass through the caller's hands.
+set -euo pipefail
+
+BASE="${ROOMS_URL:-http://localhost:8787}"
+STATE="${ROOMS_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-rooms}"
+
+usage() {
+  cat <<'USAGE'
+usage:
+  rooms create [--handle H] [--topic TEXT] [--ttl SECONDS]   prints the room URL (share this, nothing else)
+  rooms join URL [--handle H]
+  rooms read URL                     print messages you have not seen yet
+  rooms wait URL [--timeout SECONDS] block until someone else posts, the room closes, or the timeout
+                                     (default 540). exit 0 = new messages printed, 2 = room closed, 3 = timeout
+  rooms post URL [--to H] [--reply-to N] [TEXT]              TEXT, or stdin when omitted
+  rooms who URL
+  rooms leave URL
+  rooms close URL                    host only
+USAGE
+  exit 64
+}
+
+die() { echo "rooms: $*" >&2; exit 1; }
+field() { sed -n "s/.*\"$1\":\"\\([^\"]*\\)\".*/\\1/p" <<<"$2"; }
+dir_for() { echo "$STATE/$(basename "${1%/}")"; }
+
+load() {
+  URL="${1%/}"
+  D="$(dir_for "$URL")"
+  [ -f "$D/token" ] || die "not in this room yet; run: rooms join $URL"
+  TOKEN="$(cat "$D/token")"
+  CURSOR="$(cat "$D/cursor")"
+}
+
+save() { # save URL RESPONSE
+  local d; d="$(dir_for "$1")"
+  mkdir -p "$d"; chmod 700 "$STATE" "$d"
+  (umask 077; field token "$2" > "$d/token")
+  field handle "$2" > "$d/handle"
+  echo 0 > "$d/cursor"
+}
+
+# fetch WAIT -> body in $BODY, advances the cursor, sets $STATUS and $NEWS
+fetch() {
+  local hdr; hdr="$(mktemp)"
+  BODY="$(curl -sS --max-time $(( $1 + 15 )) -D "$hdr" -H "Authorization: Bearer $TOKEN" \
+    "$URL/messages?since=$CURSOR&wait=$1&format=text")" || { rm -f "$hdr"; die "cannot reach $URL"; }
+  STATUS="$(tr -d '\r' < "$hdr" | sed -n 's/^[Xx]-[Rr]oom-[Ss]tatus: //p')"
+  local c; c="$(tr -d '\r' < "$hdr" | sed -n 's/^[Xx]-[Rr]oom-[Cc]ursor: //p')"
+  rm -f "$hdr"
+  [ -n "$c" ] || { echo "$BODY" >&2; die "unexpected response"; }
+  NEWS=0; [ "$c" != "$CURSOR" ] && NEWS=1
+  CURSOR="$c"; echo "$c" > "$D/cursor"
+}
+
+cmd="${1:-}"; [ -n "$cmd" ] && shift || usage
+
+case "$cmd" in
+  create)
+    args=()
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --handle|--topic|--ttl) args+=(--data-urlencode "${1#--}=$2"); shift 2 ;;
+        *) usage ;;
+      esac
+    done
+    [ ${#args[@]} -gt 0 ] || args=(-X POST)
+    R="$(curl -sS "${args[@]}" "$BASE/")" || die "cannot reach $BASE"
+    URL="$(field room_url "$R")"; [ -n "$URL" ] || die "$R"
+    save "$URL" "$R"
+    echo 1 > "$(dir_for "$URL")/cursor" # skip our own "created the room" event
+    echo "$URL"
+    echo "invite with: $(field share "$R")" >&2
+    ;;
+  join)
+    URL="${1%/}"; [ -n "$URL" ] || usage; shift
+    args=(-X POST)
+    [ "${1:-}" = "--handle" ] && args=(--data-urlencode "handle=$2")
+    R="$(curl -sS "${args[@]}" "$URL/join")" || die "cannot reach $URL"
+    [ -n "$(field token "$R")" ] || die "$R"
+    save "$URL" "$R"
+    echo "joined as $(field handle "$R")"
+    ;;
+  read)
+    load "${1:-}"; fetch 0; echo "$BODY"
+    ;;
+  wait)
+    load "${1:-}"; shift
+    timeout=540; [ "${1:-}" = "--timeout" ] && timeout="$2"
+    deadline=$(( $(date +%s) + timeout ))
+    while :; do
+      left=$(( deadline - $(date +%s) ))
+      [ "$left" -gt 0 ] || { echo "rooms: nothing new after ${timeout}s (room still open)"; exit 3; }
+      fetch $(( left < 50 ? left : 50 ))
+      # The server only returns early for other people's messages, so NEWS
+      # with only our own echoes cannot outlast one poll.
+      if [ "$NEWS" = 1 ] && grep -qv -e "^\[#[0-9]* [0-9:]*\] $(cat "$D/handle")[ :(]" -e '^---' -e '^    ' <<<"$BODY"; then
+        echo "$BODY"; [ "$STATUS" = closed ] && exit 2; exit 0
+      fi
+      [ "$STATUS" = closed ] && { echo "$BODY"; exit 2; }
+    done
+    ;;
+  post)
+    load "${1:-}"; shift
+    q=()
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --to) q+=(--url-query "to=$2"); shift 2 ;;
+        --reply-to) q+=(--url-query "reply_to=$2"); shift 2 ;;
+        *) break ;;
+      esac
+    done
+    if [ $# -gt 0 ]; then text="$*"; else text="$(cat)"; fi
+    printf '%s' "$text" | curl -sS -H "Authorization: Bearer $TOKEN" -H "Content-Type: text/plain" \
+      "${q[@]}" --data-binary @- "$URL/messages"
+    ;;
+  who)   load "${1:-}"; curl -sS "$URL/participants" ;;
+  leave) load "${1:-}"; curl -sS -X POST -H "Authorization: Bearer $TOKEN" "$URL/leave" ;;
+  close) load "${1:-}"; curl -sS -X POST -H "Authorization: Bearer $TOKEN" "$URL/close" ;;
+  *) usage ;;
+esac

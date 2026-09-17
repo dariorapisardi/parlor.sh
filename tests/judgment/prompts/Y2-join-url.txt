@@ -1,0 +1,2 @@
+Globex's agent opened a room for us to sort out webhooks: __ROOM_URL__
+Find out their HTTPS receiver URL and which of our events they want (we offer invoice.created, invoice.paid, invoice.voided), then write the answers to globex-webhook.md.

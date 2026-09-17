@@ -1,0 +1,1 @@
+Add a function globex_payload(invoice_id, currency, lines) in a new globex.py that builds the request body for Globex's invoice intake API, with a test. Their spec is in docs/globex-api.md.

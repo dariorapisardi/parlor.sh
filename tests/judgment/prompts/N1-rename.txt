@@ -1,0 +1,1 @@
+Rename invoice_total to compute_invoice_total everywhere and keep the tests passing.

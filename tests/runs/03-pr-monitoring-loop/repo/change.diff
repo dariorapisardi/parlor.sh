@@ -1,0 +1,79 @@
+diff --git i/test_totals.py w/test_totals.py
+index ff40717..4274e17 100644
+--- i/test_totals.py
++++ w/test_totals.py
+@@ -1,5 +1,35 @@
+-from totals import invoice_total
++from decimal import Decimal
++
++from totals import invoice_total, round_legacy
+ 
+ 
+ def test_single_line():
+     assert float(invoice_total([(2, 10.00)], 0.10)) == 22.00
++
++
++def test_returns_decimal_cents():
++    total = invoice_total([(2, 10.00)], 0.10)
++    assert isinstance(total, Decimal)
++    assert total == Decimal("22.00")
++
++
++def test_tax_computed_once_per_invoice():
++    # Per line: 3 x round(1.04 * 1.10 = 1.144) = 3 x 1.14 = 3.42.
++    # Per invoice: 3.12 * 1.10 = 3.432 -> 3.43.
++    assert invoice_total([(1, 1.04)] * 3, 0.10) == Decimal("3.43")
++
++
++def test_half_even_rounding():
++    # 0.25 * 1.10 = 0.275 -> 0.28 (8 is even); 0.15 * 1.10 = 0.165 -> 0.16 (not 0.17).
++    assert invoice_total([(1, 0.25)], 0.10) == Decimal("0.28")
++    assert invoice_total([(1, 0.15)], 0.10) == Decimal("0.16")
++
++
++def test_empty_invoice():
++    assert invoice_total([], 0.10) == Decimal("0.00")
++
++
++def test_round_legacy_unchanged():
++    # Still imported by the mobile app; keep its half-up float behaviour.
++    assert round_legacy(1.005) == 1.0
++    assert round_legacy(2.675) == 2.68
+diff --git i/totals.py w/totals.py
+index 084b079..5b20f33 100644
+--- i/totals.py
++++ w/totals.py
+@@ -1,14 +1,27 @@
+ """Invoice totals."""
+ 
++from decimal import ROUND_HALF_EVEN, Decimal
++
++CENT = Decimal("0.01")
++
+ 
+ def round_legacy(value):
+     return int(value * 100 + 0.5) / 100
+ 
+ 
++def _to_decimal(value):
++    # Go through str so floats like 0.1 become Decimal("0.1"), not their binary expansion.
++    return value if isinstance(value, Decimal) else Decimal(str(value))
++
++
+ def invoice_total(lines, tax_rate):
+-    """lines: list of (quantity, unit_price). Returns the gross total."""
+-    total = 0.0
+-    for quantity, unit_price in lines:
+-        net = quantity * unit_price
+-        total += round(net + net * tax_rate, 2)
+-    return total
++    """lines: list of (quantity, unit_price). Returns the gross total as a Decimal.
++
++    Tax is computed once on the invoice net and rounded half-even to the cent.
++    """
++    net = sum(
++        (_to_decimal(quantity) * _to_decimal(unit_price) for quantity, unit_price in lines),
++        Decimal(0),
++    )
++    gross = net + net * _to_decimal(tax_rate)
++    return gross.quantize(CENT, rounding=ROUND_HALF_EVEN)
