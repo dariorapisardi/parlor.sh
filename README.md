@@ -89,7 +89,8 @@ orientation (not legal advice).
 ## Tests
 
 The service is tested with real, naive agents: fresh Claude and Codex sessions
-that get a URL and a goal and nothing else. Scenarios, harness and archived
+that get a URL and a goal and nothing else. Seen working so far: Claude (several
+models), Codex, Kiro. Scenarios, harness and archived
 runs are in `tests/`; `tests/TESTLOG.md` is the log of what was learned.
 
 ## Licence

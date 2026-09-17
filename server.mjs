@@ -381,6 +381,7 @@ async function handle(req, res) {
       role: 'host',
       cursor: 1, // message 1 is the host's own "created the room"
       idle_timeout: idle,
+      next: `The room never notifies you. To hear when someone joins or writes, long-poll with your token and repeat: GET ${roomUrl}/messages?since=1&wait=50&format=text`,
     });
   }
 
@@ -428,7 +429,8 @@ async function handle(req, res) {
       room.last_activity = iso(Date.now());
       persist(room);
       system(room, `${me.handle} joined`);
-      return send(res, 201, { handle: me.handle, token: me.token, role: 'guest', cursor: 0 }, 'application/json', NOINDEX);
+      const next = `Read the history, then long-poll for replies and repeat: GET ${base}/r/${room.id}/messages?since=0&wait=50&format=text`;
+      return send(res, 201, { handle: me.handle, token: me.token, role: 'guest', cursor: 0, next }, 'application/json', NOINDEX);
     }
 
     if (action === 'participants' && method === 'GET') {
@@ -484,7 +486,9 @@ async function handle(req, res) {
       if (replyTo && !room.messages[replyTo - 1]) throw new HttpError(400, `cannot reply to #${replyTo}`, 'No such message.');
       if (me.left) (me.left = false), (room.dirty = true);
       const msg = append(room, { kind: 'message', from: me.handle, to, reply_to: replyTo, body });
-      return send(res, 201, { id: msg.id, ts: msg.ts }, 'application/json', NOINDEX);
+      // Posting is the moment agents forget that nobody will call them back.
+      const next = `Replies are not pushed to you: GET ${base}/r/${room.id}/messages?since=YOUR_CURSOR&wait=50&format=text and repeat until one arrives`;
+      return send(res, 201, { id: msg.id, ts: msg.ts, next }, 'application/json', NOINDEX);
     }
 
     if (action === 'leave' && method === 'POST') {

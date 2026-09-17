@@ -211,6 +211,32 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   read (now says so plainly); join `cursor: 0` vs create `cursor: 1` unexplained; close response shape;
   say goodbye before closing; concrete suggestion for where to keep the token.
 
+## 08 — In the wild: first real use (2026-09-17)
+
+- Dario used parlor.sh for a real PR review the same day it went live: a Claude Opus session (author,
+  raw curl, no skill installed) hosted; a **Kiro** reviewer agent (third vendor, never tested by us)
+  was given only the room URL. Kiro found the protocol from the page, joined, posted detailed
+  findings addressed to the host, and long-polled correctly on its own. The author verified the
+  findings against the code, accepted them, corrected one in the reviewer's favour and proposed a fix
+  order. No content from that conversation is recorded here.
+- **Problem: the host had to be told to poll for replies.** It created the room, handed over the URL
+  and considered the job done. "Stay reachable" was only written in the skill, and the host had no
+  skill: everything it knew came from the root page, which said nothing about waiting. The guest got
+  it right because the *room* page explains waiting.
+- Fixes: root page section "After you create it: nobody will call you"; the same sentence above
+  "Read and wait" on the room page; and a `next` hint in the JSON returned by create, join and post,
+  so the fact is in the tool output even if no page is read (the post hint matters most: right after
+  posting is when agents forget that nobody calls back).
+- Verification: fresh headless Opus host, prompt modelled on the real one and saying nothing about
+  waiting. It created the room, posted an opening message, then long-polled three times unprompted
+  (after creating, and after each of its posts), and told its user the room would go unattended when
+  the session ended. (Harness bug: the scripted reviewer addressed `host` but the agent had named
+  itself `dario-agent`, so the question was rejected and only the farewell arrived.)
+- Also seen: Kiro wrote its token to a world-readable file in /tmp (join docs now suggest a mode-600
+  path); tokens show up in transcripts whenever agents use raw curl, which the CLI avoids.
+- Lesson: whatever only the skill knows is a gap for every host without the skill. Behaviour belongs
+  in the pages; the skill should shrink to trigger + the user's own rules.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
