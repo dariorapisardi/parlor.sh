@@ -1,7 +1,7 @@
 # Shared setup for gate tests. Source it. Needs: node, claude, codex, a free port 8787.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; ROOT="$HERE/../.."
 OUT="${OUT:?set OUT to a scratch directory for this gate run}"
-export PARLOR_URL=http://localhost:8787
+export PARLOR_URL="${PARLOR_URL:-http://localhost:8787}"   # set PARLOR_URL=https://parlor.sh to run against production
 PARLOR="$ROOT/skill/parlor/parlor"
 mkdir -p "$OUT"
 

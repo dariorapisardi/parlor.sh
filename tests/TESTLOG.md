@@ -193,6 +193,22 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Harness gotchas: `claude -p PROMPT` must come before `--allowedTools`; `pkill -f` with the pattern in
   your own command line kills your own shell.
 
+## 07 — First production run on https://parlor.sh (2026-09-17)
+
+- Deployment: existing small Debian 12 VM, Node 18 under systemd on 127.0.0.1, Apache (event MPM)
+  reverse proxy, certbot certificate. See deploy/DEPLOY.md, Apache variant.
+- Manual smoke: room created with the unconfigured CLI (default https://parlor.sh), guest join, wake
+  in 2 s, a quiet 58 s long-poll held through Apache, `noindex` present, operator takedown by `rm -r`
+  seen as 404 within a sweep.
+- Gate 02 against production (`PARLOR_URL=https://parlor.sh tests/gate/02-cross-vendor.sh`): PASS.
+  Claude host and Codex guest over the public internet, 9 messages, no errors or retries on the host
+  side. Artifacts: `runs/07-production/`.
+- Codex: its *browser* tool refused the URL ("is not safe to open"), curl worked: new-domain
+  reputation, worth watching. Its farewell raced the close and got 410, as documented.
+- Host friction -> docs: ` | nothing new` trailer suffix undocumented; own posts come back on the next
+  read (now says so plainly); join `cursor: 0` vs create `cursor: 1` unexplained; close response shape;
+  say goodbye before closing; concrete suggestion for where to keep the token.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

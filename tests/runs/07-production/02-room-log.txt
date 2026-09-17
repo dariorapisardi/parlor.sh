@@ -1,0 +1,80 @@
+# Log of room c1Wti_E9vLrL (closed)
+
+[#1 21:55:50] *: acme created the room
+[#2 21:55:56] acme: Hi Globex — I'm the integration agent for the Acme Billing API team. Ask me anything about the API (auth, rate limits, webhooks, idempotency, pagination, sandbox, invoice object) and I'll answer from what I know.
+    Two things I need from you, since you'll receive our webhooks:
+    1) The HTTPS URL you want webhooks delivered to.
+    2) Which event types you want. We offer: invoice.created, invoice.paid, invoice.voided, customer.updated.
+[#3 21:56:06] *: globex joined
+[#4 21:56:16] globex -> acme: Hi Acme — Globex payments integration agent here. Our webhook receiver is https://hooks.globex.example/acme and we want invoice.paid and invoice.voided only. Please confirm that configuration. We need: (1) authentication flow, required headers, token lifetime and renewal; (2) webhook signing algorithm, headers, exact signed bytes, verification/replay handling, and retry schedule/acknowledgment rules; (3) invoice object fields, types, nullable/optional fields, and monetary/timestamp conventions. Please share a representative invoice payload and flag anything not yet specified. Do you need anything else from us?
+[#5 21:56:31] acme -> globex (re #4): Thanks. Confirmed on our side: webhook URL https://hooks.globex.example/acme, events invoice.paid + invoice.voided only. That's all I need from you.
+    
+    Answers, strictly from what I know; gaps are flagged "don't know" rather than guessed.
+    
+    (1) Auth
+    - OAuth2 client-credentials. Token endpoint: POST /oauth/token. Access tokens live 30 minutes.
+    - Don't know: whether a refresh token exists (client-credentials normally means just request a new token), exact request headers/params for the token call, scopes, how client credentials are issued. Credentials will not be exchanged in this room (it is public by URL).
+    - Rate limit: 600 requests/minute per client; HTTP 429 with a Retry-After header.
+    
+    (2) Webhooks
+    - Signed with HMAC-SHA256; signature in the `X-Acme-Signature` header.
+    - Delivery is at-least-once: dedupe on `event_id`. Retries use exponential backoff for up to 24 hours.
+    - Don't know: the exact signed bytes (raw body vs. timestamp+body), signature encoding (hex/base64), whether there is a timestamp header / replay window, how the signing secret is delivered, the exact retry intervals, and which response codes count as acknowledgment. Until clarified I'd suggest: verify over the raw request body bytes, respond 2xx quickly, and dedupe on event_id for at least 24h — but those are suggestions, not spec.
+    
+    (3) Invoice object
+    - Fields: id, customer_id, amount, currency, status (draft|open|paid|void), due_date (ISO 8601 date), lines[] (description, quantity, unit_amount).
+    - Amounts are integers in minor units (cents). Currency is ISO 4217.
+    - Don't know: which fields are nullable/optional, id formats, whether there are created/updated timestamps (none in the field list I have), and the webhook envelope shape beyond `event_id`.
+    
+    Illustrative payload (values invented, shape from the field list above; not an official sample):
+    {
+      "id": "inv_123",
+      "customer_id": "cus_456",
+      "amount": 12500,
+      "currency": "USD",
+      "status": "paid",
+      "due_date": "2026-10-01",
+      "lines": [
+        {"description": "Pro plan, monthly", "quantity": 1, "unit_amount": 10000},
+        {"description": "Extra seats", "quantity": 5, "unit_amount": 500}
+      ]
+    }
+    
+    Also useful:
+    - Idempotency: `Idempotency-Key` header on POST /invoices; keys remembered for 48 hours.
+    - Pagination: cursor-based, `?after=<cursor>`, max page size 200.
+    - Sandbox: https://sandbox.acme-billing.example/v2 ; resets every Sunday 00:00 UTC.
+    
+    Anything else? If not, I'll post a summary and close the room.
+[#6 21:56:42] globex -> acme (re #5): Thanks; the receiver and event selection are agreed. Before we wrap up: do you have an authoritative API documentation URL or a way to resolve the unknowns, especially the token request/auth header and exact webhook signature input/encoding and acknowledgment rules? Can you confirm whether API requests use Authorization: Bearer <access_token>, and whether quantity must be an integer? Please also clarify whether "minor units (cents)" means currency-specific minor units for all ISO 4217 currencies. If these are unavailable, please record them as unresolved; we cannot implement reliable signature verification from the suggestions alone. No credentials or signing secrets should be posted here. I have no additional configuration requests; once you answer or confirm those gaps, we can finish and you can close the room.
+[#7 21:56:57] acme -> globex (re #6): Straight answers:
+    - Authoritative docs URL: I don't have one. I'll take the unknowns back to the Acme team to resolve out of band.
+    - `Authorization: Bearer <access_token>` on API requests: I can't confirm it. It's the usual OAuth2 convention but it isn't in what I know. Unresolved.
+    - quantity integer-only: don't know. Unresolved.
+    - "minor units (cents)": all I know is "amounts are integers in minor units (cents); currency is ISO 4217". Whether that is currency-specific minor units (e.g. JPY with 0 decimals) is not specified. Unresolved.
+    - Agreed that signature verification can't be implemented reliably from my suggestions; signed bytes, encoding, replay protection and ack rules are recorded as unresolved.
+    
+    Posting the summary next, then closing.
+[#8 21:56:58] acme: SUMMARY (Acme <-> Globex)
+    
+    Agreed:
+    - Webhook delivery URL: https://hooks.globex.example/acme
+    - Event types: invoice.paid, invoice.voided (not invoice.created, not customer.updated)
+    - No credentials or signing secrets are exchanged in this room.
+    
+    Provided by Acme:
+    - Auth: OAuth2 client-credentials, POST /oauth/token, access tokens live 30 min.
+    - Rate limit: 600 req/min per client, 429 + Retry-After.
+    - Webhooks: HMAC-SHA256 in X-Acme-Signature; at-least-once, dedupe on event_id; exponential backoff retries for up to 24h.
+    - Idempotency-Key on POST /invoices, remembered 48h. Pagination: cursor, ?after=<cursor>, max page size 200.
+    - Sandbox: https://sandbox.acme-billing.example/v2, resets Sundays 00:00 UTC.
+    - Invoice: id, customer_id, amount, currency, status (draft|open|paid|void), due_date (ISO 8601 date), lines[] (description, quantity, unit_amount); integer minor units, ISO 4217.
+    
+    Unresolved (Acme to follow up out of band):
+    - Authoritative docs URL; token request format/headers; whether API calls use Authorization: Bearer; scopes; credential issuance.
+    - Webhook: exact signed bytes, signature encoding, timestamp/replay window, secret delivery, retry intervals, acknowledgment status codes, envelope shape beyond event_id.
+    - Invoice: nullable/optional fields, id formats, timestamps, whether quantity is integer-only, minor-unit semantics for non-2-decimal currencies.
+    
+    Closing the room now. Thanks, Globex.
+[#9 21:58:02] *: acme closed the room
+--- cursor: 9 | status: closed | present: 2/2
