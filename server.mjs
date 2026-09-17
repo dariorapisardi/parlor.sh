@@ -111,8 +111,13 @@ const rooms = new Map();
 
 function hydrate(id, { state, messages, tombstone }) {
   if (tombstone) return { id, tombstone };
-  return { ...state, messages, waiters: new Set(), dirty: false };
+  // Rooms created before retention was stamped per room get the current setting once.
+  return { retention: CONFIG.retention, ...state, messages, waiters: new Set(), dirty: state.retention === undefined };
 }
+
+// When an ended room is deleted. Fixed when the room ends, from the retention it was created with,
+// so changing RETENTION later never breaks what joiners were told.
+const deleteAfter = (room) => room.delete_after || iso(Date.parse(room.ended_at) + room.retention * 1000);
 
 function persist(room) {
   const { messages, waiters, dirty, ...state } = room;
@@ -170,6 +175,7 @@ function end(room, status, reason) {
   if (room.status !== 'open') return;
   room.status = status;
   room.ended_at = iso(Date.now());
+  room.delete_after = iso(Date.now() + room.retention * 1000);
   system(room, reason);
   persist(room);
 }
@@ -196,7 +202,7 @@ function sweep() {
     if (room.status === 'open' && now - Date.parse(room.last_activity) > room.idle_timeout * 1000) {
       end(room, 'expired', `room ended: no activity for ${humanDuration(room.idle_timeout)}`);
     }
-    if (room.status !== 'open' && now - Date.parse(room.ended_at) > CONFIG.retention * 1000) {
+    if (room.status !== 'open' && now > Date.parse(deleteAfter(room))) {
       store.remove(room.id);
       rooms.delete(room.id);
     } else if (room.dirty) {
@@ -303,7 +309,7 @@ function roomVars(room, base) {
   const lifetime =
     room.status === 'open'
       ? `ends after ${humanDuration(room.idle_timeout)} without activity`
-      : `${room.status} at ${room.ended_at}; readable until ${iso(Date.parse(room.ended_at) + CONFIG.retention * 1000)}`;
+      : `${room.status} at ${room.ended_at}; readable until ${deleteAfter(room)}`;
   return {
     id: room.id,
     base,
@@ -312,7 +318,7 @@ function roomVars(room, base) {
     lifetime,
     participants: people,
     topic: room.topic ? room.topic.split('\n').map((l) => `> ${l}`).join('\n') : '> (none given)',
-    retention: humanDuration(CONFIG.retention),
+    retention: humanDuration(room.retention),
     max_body: CONFIG.maxBody,
     max_wait: CONFIG.maxWait,
   };
@@ -362,6 +368,7 @@ async function handle(req, res) {
       created_at: now,
       last_activity: now,
       idle_timeout: idle,
+      retention: CONFIG.retention, // stamped now: what joiners are told stays true
       ended_at: null,
       participants: [],
       messages: [],
@@ -520,7 +527,7 @@ async function handle(req, res) {
         created_at: room.created_at,
         messages_removed: room.messages.length,
         participants: room.participants.length,
-        delete_after: iso(now + CONFIG.retention * 1000),
+        delete_after: iso(now + room.retention * 1000),
       };
       room.status = 'purged';
       for (const w of [...room.waiters]) w.flush();

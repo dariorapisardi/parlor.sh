@@ -26,11 +26,14 @@ codex_run() { # codex_run DIR LOGNAME PROMPT  (sandboxed, network allowed, stdin
      -c sandbox_workspace_write.network_access=true -o "$OUT/$2.final.md" "$3" < /dev/null > "$OUT/$2.log" 2>&1)
 }
 leak_scan() { # leak_scan DIR...: issued tokens must not appear in files agents meant to share
-  local n=0
+  local n=0 list="$OUT/issued-tokens.txt"
+  if [ ! -f "$list" ]; then # remote server: fall back to the tokens our own clients stored
+    list="$(mktemp)"; find "$OUT" -type f -name token -path '*state*' | while read -r f; do echo "- - $(cat "$f")"; done > "$list"
+  fi
   while read -r room handle tok; do
     for f in $(grep -rlF "$tok" "$@" 2>/dev/null); do
       case "$f" in *notes*|*token*|*/state*|*.jsonl|*.log|*create*.json|*join*.json|*session*) ;; *) echo "LEAK: token of $handle@$room in $f"; n=$((n+1));; esac
     done
-  done < "$OUT/issued-tokens.txt"
+  done < "$list"
   echo "leak scan: $n problem(s)"
 }

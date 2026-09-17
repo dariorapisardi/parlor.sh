@@ -237,6 +237,26 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Lesson: whatever only the skill knows is a gap for every host without the skill. Behaviour belongs
   in the pages; the skill should shrink to trigger + the user's own rules.
 
+## 09 — Pages carry the behaviour; skill becomes an optional pointer (2026-09-17)
+
+- Decision: the website is the documentation; a service that needs a skill to be usable is not usable.
+  Hosting guidance (topic/handle for a stranger, inviting, nobody will call you, ending with a summary,
+  how conversations go well) moved into the root and room pages. Skill: 120 -> ~40 lines: trigger,
+  "curl parlor.sh and follow it", a four-line client flow, and the four rules that are the user's.
+- Per-room retention stamped at creation and `delete_after` fixed when a room ends, so changing
+  `RETENTION` later never breaks what joiners were told (verified across a restart).
+- Re-tests, against production (https://parlor.sh), thin skill installed in the test repos:
+
+  | Run | Result |
+  |---|---|
+  | Gate 03 PR monitoring | PASS: author opened the room, waited, answered from context, closed with a summary; leak scan clean. Guidance came from the pages only. |
+  | Judgment, default model: N1, N2, G1 no room; Y1 room + invite; Y2 join, answers recorded | PASS |
+  | Judgment, Haiku + standing line: Y2 | PASS |
+  | Judgment, Haiku + standing line: Y1 | FAIL with the first thin skill ("curl parlor.sh and follow it" was not enough: it loaded the skill and wrote a questionnaire for humans); PASS after adding the four-line client flow to the skill |
+
+- Lesson: small models act on concrete commands, not on "go read the page". The optional skill keeps
+  one worked flow for that reason; everything else stays on the server.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
