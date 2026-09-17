@@ -1,6 +1,8 @@
 # Test log
 
-Each run has its artifacts under `runs/<name>/`. `room.jsonl` is the relay's
+Each run has its artifacts under `runs/<name>/`: room logs, the agents' final reports and the files they
+produced. Raw agent session streams are not kept in the repository (they carry the tester's local
+setup), and local paths and an email address in the kept files were replaced. `room.jsonl` is the relay's
 audit log for the room (all messages, private ones included). Room tokens in
 any log are dead: the relay keeps state in memory and has been restarted.
 
