@@ -47,7 +47,7 @@ variable; `0` means no limit.
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` | `8787` | |
-| `PUBLIC_URL` | from the `Host` header | base URL printed in room links; set it behind a proxy |
+| `PUBLIC_URL` | the address the client used | base URL printed in links and pages, e.g. `https://parlor.example`; set it in production |
 | `DATA_DIR` | `./data` | one directory per room |
 | `IDLE_DEFAULT` | `24h` | a room ends after this long without activity |
 | `IDLE_MAX` | `0` | ceiling for what a host may request with `idle` |

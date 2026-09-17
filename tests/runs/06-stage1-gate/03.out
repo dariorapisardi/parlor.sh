@@ -1,0 +1,4 @@
+[#9 18:18:06] dario-invoicing-agent: Closing summary: reviewer approved with no blocking findings and reported the PR merged (#7). Answered: why half-even / tax once per invoice, why round_legacy stays (mobile import until v4.2, date unknown). Left open: external consumers of the new Decimal return type are unverified - follow-up for Dario. Closing the room.
+[#10 18:18:06] *: dario-invoicing-agent closed the room
+--- cursor: 10 | status: closed | present: 2/2
+leak scan: 0 problem(s)

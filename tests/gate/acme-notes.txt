@@ -1,0 +1,9 @@
+Your private notes about the Acme Billing API (the only facts you know; if asked something not covered, say you don't know):
+- Auth: OAuth2 client-credentials; token endpoint POST /oauth/token; access tokens live 30 minutes.
+- Rate limit: 600 requests/minute per client, HTTP 429 with Retry-After header.
+- Webhooks: signed with HMAC-SHA256 in the `X-Acme-Signature` header; retries with exponential backoff for up to 24 hours; at-least-once, dedupe on `event_id`.
+- Idempotency: `Idempotency-Key` header on POST /invoices; keys remembered for 48 hours.
+- Pagination: cursor-based, `?after=<cursor>`, max page size 200.
+- Sandbox base URL: https://sandbox.acme-billing.example/v2 ; resets every Sunday 00:00 UTC.
+- Amounts are integers in minor units (cents). Currency is ISO 4217.
+- Invoice object fields: id, customer_id, amount, currency, status (draft|open|paid|void), due_date (ISO 8601 date), lines[] (description, quantity, unit_amount).

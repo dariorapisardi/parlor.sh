@@ -39,7 +39,8 @@ const CONFIG = {
 
 const readDoc = (f) => fs.readFileSync(path.join(DIR, 'docs', f), 'utf8');
 const STYLE = readDoc('style.css.inc');
-const DOCS = Object.fromEntries(['index.md', 'room.md', 'index.html', 'room.html'].map((f) => [f, readDoc(f).replace('{{style}}', STYLE)]));
+const THEME = readDoc('theme.html.inc');
+const DOCS = Object.fromEntries(['index.md', 'room.md', 'index.html', 'room.html'].map((f) => [f, readDoc(f).replace('{{style}}', STYLE).replace('{{theme}}', THEME)]));
 
 const rand = (n) => randomBytes(n).toString('base64url');
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
@@ -300,7 +301,7 @@ function roomVars(room, base) {
   const people = room.participants.map((p) => `${p.handle}${p.role === 'host' ? ' (host)' : ''}${p.left ? ' (left)' : ''}`).join(', ');
   const lifetime =
     room.status === 'open'
-      ? `open; ends after ${humanDuration(room.idle_timeout)} without activity`
+      ? `ends after ${humanDuration(room.idle_timeout)} without activity`
       : `${room.status} at ${room.ended_at}; readable until ${iso(Date.parse(room.ended_at) + CONFIG.retention * 1000)}`;
   return {
     id: room.id,
@@ -324,7 +325,9 @@ function tombstoneText(t) {
 // Routes
 // ---------------------------------------------------------------------------
 async function handle(req, res) {
-  const base = CONFIG.publicUrl || `http://${req.headers.host}`;
+  // Links are printed with PUBLIC_URL when set; otherwise with the address the client used.
+  const proto = (CONFIG.trustProxy && req.headers['x-forwarded-proto']) || 'http';
+  const base = CONFIG.publicUrl || `${proto}://${req.headers.host}`;
   const url = new URL(req.url, base);
   const parts = url.pathname.split('/').filter(Boolean);
   const method = req.method === 'HEAD' ? 'GET' : req.method;
@@ -337,7 +340,9 @@ async function handle(req, res) {
   }
 
   if (parts.length === 1 && parts[0] === 'cli' && method === 'GET') {
-    return send(res, 200, fs.readFileSync(CONFIG.cliPath, 'utf8'), 'text/plain');
+    // The copy served here talks to this server by default, wherever it is hosted.
+    const script = fs.readFileSync(CONFIG.cliPath, 'utf8').replace('${PARLOR_URL:-https://parlor.sh}', `\${PARLOR_URL:-${base}}`);
+    return send(res, 200, script, 'text/plain');
   }
 
   if (parts.length === 0 && method === 'POST') {
@@ -373,7 +378,7 @@ async function handle(req, res) {
       handle: me.handle,
       token: me.token,
       role: 'host',
-      cursor: 0,
+      cursor: 1, // message 1 is the host's own "created the room"
       idle_timeout: idle,
     });
   }
@@ -405,7 +410,7 @@ async function handle(req, res) {
       }
       const text = `# Log of room ${room.id} (${room.status})\n\n${formatText(room, room.messages, room.messages.length)}`;
       if (wantsHtml(req) && !format) {
-        const page = `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>parlor log ${room.id}</title><pre style="white-space:pre-wrap;font:14px/1.5 ui-monospace,monospace;max-width:90ch;margin:2rem auto;padding:0 1rem">${escapeHtml(text)}</pre>`;
+        const page = `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><meta name="color-scheme" content="light dark"><title>parlor log ${room.id}</title><pre style="white-space:pre-wrap;font:14px/1.5 ui-monospace,monospace;max-width:90ch;margin:2rem auto;padding:0 1rem">${escapeHtml(text)}</pre>`;
         return send(res, 200, page, 'text/html', NOINDEX);
       }
       return send(res, 200, text, 'text/plain', NOINDEX);
