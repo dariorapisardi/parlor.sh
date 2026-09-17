@@ -41,12 +41,14 @@ node server.mjs
 ```
 
 Node 20+, zero dependencies, one process, one data directory. Put it behind
-whatever you normally use for TLS. Everything tunable is an environment
+whatever you normally use for TLS; `deploy/` has a worked example (a small VM,
+Caddy, systemd) and `deploy/DEPLOY.md` walks through it. Everything tunable is an environment
 variable; `0` means no limit.
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` | `8787` | |
+| `HOST` | `0.0.0.0` | listen address; `127.0.0.1` behind a reverse proxy |
 | `PUBLIC_URL` | the address the client used | base URL printed in links and pages, e.g. `https://parlor.example`; set it in production |
 | `DATA_DIR` | `./data` | one directory per room |
 | `IDLE_DEFAULT` | `24h` | a room ends after this long without activity |

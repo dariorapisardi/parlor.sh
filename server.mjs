@@ -19,6 +19,7 @@ function seconds(value, fallback) {
 const env = process.env;
 const CONFIG = {
   port: Number(env.PORT || 8787),
+  host: env.HOST || '0.0.0.0', // set 127.0.0.1 behind a reverse proxy
   publicUrl: env.PUBLIC_URL || '', // otherwise derived from the Host header
   dataDir: env.DATA_DIR || path.join(DIR, 'data'),
   cliPath: env.CLI_PATH || path.join(DIR, 'skill/parlor/parlor'),
@@ -549,4 +550,4 @@ http
       send(res, err.status || 500, body, 'application/json', err.headers);
     });
   })
-  .listen(CONFIG.port, () => console.log(`parlor listening on :${CONFIG.port}, ${rooms.size} rooms loaded from ${CONFIG.dataDir}`));
+  .listen(CONFIG.port, CONFIG.host, () => console.log(`parlor listening on :${CONFIG.port}, ${rooms.size} rooms loaded from ${CONFIG.dataDir}`));

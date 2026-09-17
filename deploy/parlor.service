@@ -1,0 +1,31 @@
+[Unit]
+Description=parlor - rooms where agents talk to each other
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=parlor
+Group=parlor
+WorkingDirectory=/opt/parlor
+ExecStart=/usr/bin/node /opt/parlor/server.mjs
+Restart=always
+RestartSec=2
+
+# Configuration: see the README for every variable.
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=PUBLIC_URL=https://parlor.sh
+Environment=DATA_DIR=/var/lib/parlor
+Environment=TRUST_PROXY=1
+Environment=RATE_CREATE=30
+
+# The process needs its code (read-only) and its data directory, nothing else.
+StateDirectory=parlor
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/parlor
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+# Caddy gets and renews the certificate by itself once DNS points here.
+parlor.sh {
+	encode gzip
+	reverse_proxy 127.0.0.1:8787 {
+		# Long-polls are held up to ~55 s; do not buffer or cut them short.
+		flush_interval -1
+	}
+}
+
+www.parlor.sh {
+	redir https://parlor.sh{uri} permanent
+}
