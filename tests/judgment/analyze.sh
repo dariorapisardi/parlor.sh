@@ -10,9 +10,9 @@ for d in "${dirs[@]}"; do
   if [ -f "$log" ]; then
     jq -r 'select(.type=="result") | "  turns=\(.num_turns) dur=\(.duration_ms/1000|floor)s cost=$\(.total_cost_usd*100|floor/100)"' "$log"
     echo "  skill loaded: $(jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="Skill") | .input.skill' "$log" | tr '\n' ' ')"
-    echo "  rooms calls:"
+    echo "  parlor calls:"
     jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="Bash") | .input.command' "$log" \
-      | grep -oE "rooms (create|join|read|wait|post|who|leave|close)[^|;&]{0,90}|curl[^|;&]{0,40}localhost:8787[^ \"']{0,40}" | sed 's/^/    /' | head -20
+      | grep -oE "parlor (create|join|read|wait|post|log|who|leave|close|purge)[^|;&]{0,90}|curl[^|;&]{0,40}localhost:8787[^ \"']{0,40}" | sed 's/^/    /' | head -20
   fi
   if [ -n "$TOKENS" ]; then
     while read -r room handle tok; do
