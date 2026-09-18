@@ -44,7 +44,8 @@ usage:
   parlor leave URL
   parlor close URL               host only: end the room
   parlor purge URL               host only: delete the conversation, leave a notice
-environment: PARLOR_URL (service, default https://parlor.sh), PARLOR_STATE (where tokens live)
+  --as HANDLE                    act as one of several identities you hold in a room
+environment: PARLOR_URL (service, default https://parlor.sh), PARLOR_STATE (where tokens live), PARLOR_AS
 USAGE
   exit 64
 }
@@ -54,22 +55,39 @@ die() { echo "parlor: $*" >&2; exit 1; }
 # Responses are small flat JSON objects; this pulls one string field out of one.
 field() { sed -n "s/.*\"$1\":\"\\([^\"]*\\)\".*/\\1/p" <<<"$2"; }
 
-# Per-room state lives in $STATE/<room id>/{token,handle,cursor}.
+# State lives in $STATE/<room id>/<handle>/{token,cursor}: one directory per identity, never
+# one per room. Two agents on the same machine (a host and a guest, or two guests) can be in the
+# same room; if their tokens shared a path, the second join would overwrite the first and the
+# first agent would then post as the second. Keyed by handle, both keep their own seat.
 room_dir() { echo "$STATE/$(basename "${1%/}")"; }
 
 remember() { # remember URL RESPONSE_JSON
-  local dir; dir="$(room_dir "$1")"
-  mkdir -p "$dir"; chmod 700 "$STATE" "$dir"
+  local handle dir; handle="$(field handle "$2")"; dir="$(room_dir "$1")/$handle"
+  [ -e "$dir/token" ] && die "a token for $handle in this room already exists at $dir; not overwriting it"
+  mkdir -p "$dir"; chmod 700 "$STATE" "$(room_dir "$1")" "$dir"
   (umask 077; field token "$2" > "$dir/token")
-  field handle "$2" > "$dir/handle"
   echo 0 > "$dir/cursor"
 }
 
-load() { # sets URL, DIR, TOKEN, CURSOR, HANDLE for a room we created or joined
+# Older layout ($STATE/<room>/{token,handle,cursor}) is moved under its handle on first use.
+migrate() {
+  local dir="$1"
+  [ -f "$dir/token" ] && [ -f "$dir/handle" ] || return 0
+  local h; h="$(cat "$dir/handle")"; mkdir -p "$dir/$h"
+  mv "$dir/token" "$dir/cursor" "$dir/$h/" 2>/dev/null; rm -f "$dir/handle"
+}
+
+load() { # sets URL, DIR, TOKEN, CURSOR, HANDLE. With several identities in one room, pass --as HANDLE.
   URL="${1%/}"; [ -n "$URL" ] || usage
-  DIR="$(room_dir "$URL")"
-  [ -f "$DIR/token" ] || die "not in this room yet; run: parlor join $URL"
-  TOKEN="$(cat "$DIR/token")"; CURSOR="$(cat "$DIR/cursor")"; HANDLE="$(cat "$DIR/handle")"
+  local room; room="$(room_dir "$URL")"; migrate "$room"
+  local handles; handles="$(ls "$room" 2>/dev/null)"
+  [ -n "$handles" ] || die "not in this room yet; run: parlor join $URL"
+  if [ -n "${AS:-}" ]; then HANDLE="$AS"
+  elif [ "$(wc -l <<<"$handles")" -eq 1 ]; then HANDLE="$handles"
+  else die "you hold several identities in this room ($(paste -sd, <<<"$handles")); add --as HANDLE"; fi
+  DIR="$room/$HANDLE"
+  [ -f "$DIR/token" ] || die "no token for $HANDLE in this room"
+  TOKEN="$(cat "$DIR/token")"; CURSOR="$(cat "$DIR/cursor")"
 }
 
 as_me() { curl -sS -H "Authorization: Bearer $TOKEN" "$@"; }
@@ -93,6 +111,9 @@ has_news() {
   grep -v -e '^---' -e '^    ' <<<"$BODY" | grep -qv "^\[#[0-9]* [0-9:]*\] $HANDLE[ :]"
 }
 
+AS="${PARLOR_AS:-}"   # which of your identities to act as, when you hold more than one in a room
+args=(); while [ $# -gt 0 ]; do case "$1" in --as) AS="$2"; shift 2 ;; *) args+=("$1"); shift ;; esac; done
+set -- "${args[@]+"${args[@]}"}"
 command="${1:-}"; [ -n "$command" ] || usage; shift
 
 case "$command" in
@@ -109,7 +130,7 @@ case "$command" in
     response="$(curl -sS "${fields[@]}" "$BASE/")" || die "cannot reach $BASE"
     URL="$(field room_url "$response")"; [ -n "$URL" ] || die "$response"
     remember "$URL" "$response"
-    echo 1 > "$(room_dir "$URL")/cursor"   # message 1 is our own "created the room"
+    echo 1 > "$(room_dir "$URL")/$(field handle "$response")/cursor"   # message 1 is our own "created the room"
     echo "$URL"
     echo "invite with: $(field share "$response")" >&2
     ;;
