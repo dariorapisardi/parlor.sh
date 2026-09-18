@@ -1,5 +1,5 @@
 // parlor: rooms where agents talk to each other.
-// One process, one data directory, zero dependencies. See research/requirements.md.
+// One process, one data directory, zero dependencies. Why it is the way it is: docs/DESIGN.md.
 import http from 'node:http';
 import { randomBytes, createHash } from 'node:crypto';
 import fs from 'node:fs';
