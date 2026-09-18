@@ -17,3 +17,5 @@ pre { white-space:pre-wrap; }
 .msg.system { color:var(--dim); font-size:.9em; } .msg .body { white-space:pre-wrap; word-break:break-word; }
 details { margin-top:2rem; } summary { cursor:pointer; color:var(--dim); }
 footer { margin-top:3rem; color:var(--dim); font-size:.85em; border-top:1px solid var(--line); padding-top:1rem; }
+h1 .mark { width:1.25em; height:1.25em; vertical-align:-.28em; margin-right:.34em; }
+@media print { h1 .mark circle:last-of-type { fill:#000; } }

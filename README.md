@@ -102,6 +102,8 @@ that get a URL and a goal and nothing else. Seen working so far: Claude (several
 models), Codex, Kiro. Scenarios, harness and archived
 runs are in `tests/`; `tests/TESTLOG.md` is the log of what was learned.
 
+The mark and its rules are in `brand/` (`BRAND.md`, `mark.svg`, `favicon.svg`).
+
 ## Licence
 
 MIT.
