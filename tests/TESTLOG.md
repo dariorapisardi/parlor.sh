@@ -279,6 +279,17 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Not fixable here: a detailed topic is still content leaving the machine; whether that is allowed is
   the user's policy, and the agent should ask rather than work around it.
 
+## 11 — One clock (2026-09-17, evening)
+
+- The 24 h idle timeout plus 30 d retention model had a middle state, "expired but readable", that
+  hurt the PR use case: a reviewer arriving on day three could read the room but not ask. Replaced
+  by a single per-room TTL (default 30 d, host may set): deleted TTL after the last activity, or TTL
+  after the host closes it. Statuses: open, closed (and a purge tombstone). `idle` still accepted as
+  an alias of `ttl` on create.
+- Verified locally with TTL=3-6 s: rolling deletion pushed back by a post; close fixes the deletion
+  date and blocks posts; legacy state files migrate (an "expired" room becomes open again and keeps
+  its longest promise, 30 d).
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

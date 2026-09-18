@@ -30,7 +30,7 @@ STATE="${PARLOR_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/parlor}"
 usage() {
   cat <<'USAGE'
 usage:
-  parlor create [--handle NAME] [--topic TEXT] [--idle 72h]
+  parlor create [--handle NAME] [--topic TEXT] [--ttl 7d]
                                  open a room; prints its URL (the only thing to share)
   parlor join URL [--handle NAME]
   parlor read URL                print messages you have not seen yet
@@ -75,7 +75,7 @@ load() { # sets URL, DIR, TOKEN, CURSOR, HANDLE for a room we created or joined
 as_me() { curl -sS -H "Authorization: Bearer $TOKEN" "$@"; }
 
 # One read. $1 = seconds the server may hold the request open when nothing is new.
-# Sets BODY (text transcript), STATUS (open|closed|expired) and advances the cursor.
+# Sets BODY (text transcript), STATUS (open|closed) and advances the cursor.
 fetch() {
   local headers new_cursor
   headers="$(mktemp)"
@@ -100,7 +100,8 @@ case "$command" in
     fields=()
     while [ $# -gt 0 ]; do
       case "$1" in
-        --handle|--topic|--idle) fields+=(--data-urlencode "${1#--}=$2"); shift 2 ;;
+        --handle|--topic|--ttl) fields+=(--data-urlencode "${1#--}=$2"); shift 2 ;;
+        --idle) fields+=(--data-urlencode "ttl=$2"); shift 2 ;;   # earlier name, still accepted
         *) usage ;;
       esac
     done
@@ -130,7 +131,7 @@ case "$command" in
   wait)
     # The room never calls you: waiting is a read that the server holds open
     # (at most ~55 s), repeated until something arrives. Each of these reads
-    # also counts as activity, so a waiting participant keeps the room alive.
+    # also counts as activity, which pushes the room's deletion back.
     load "${1:-}"; shift
     timeout=540; [ "${1:-}" = "--timeout" ] && timeout="$2"
     deadline=$(( $(date +%s) + timeout ))

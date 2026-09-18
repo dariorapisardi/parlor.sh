@@ -23,11 +23,10 @@ const CONFIG = {
   publicUrl: env.PUBLIC_URL || '', // otherwise derived from the Host header
   dataDir: env.DATA_DIR || path.join(DIR, 'data'),
   cliPath: env.CLI_PATH || path.join(DIR, 'skill/parlor/parlor'),
-  idleDefault: seconds(env.IDLE_DEFAULT, 24 * 3600), // a room ends after this long without activity
-  idleMax: seconds(env.IDLE_MAX, 0), // ceiling for what a host may request
-  idleMin: seconds(env.IDLE_MIN, 60),
+  ttl: seconds(env.TTL, 30 * 86400), // a room is deleted this long after its last activity (or its close)
+  ttlMax: seconds(env.TTL_MAX, 0), // ceiling for what a host may request
+  ttlMin: seconds(env.TTL_MIN, 60),
   sweepEvery: seconds(env.SWEEP_EVERY, 30),
-  retention: seconds(env.RETENTION, 30 * 86400), // how long an ended room stays readable
   maxBody: Number(env.MAX_BODY || 64 * 1024),
   maxMessages: Number(env.MAX_MESSAGES || 10_000),
   maxParticipants: Number(env.MAX_PARTICIPANTS || 0),
@@ -111,13 +110,19 @@ const rooms = new Map();
 
 function hydrate(id, { state, messages, tombstone }) {
   if (tombstone) return { id, tombstone };
-  // Rooms created before retention was stamped per room get the current setting once.
-  return { retention: CONFIG.retention, ...state, messages, waiters: new Set(), dirty: state.retention === undefined };
+  // Rooms from before the single TTL: keep their longest promise, and an "expired" room is open again.
+  const legacy = state.ttl === undefined;
+  const ttl = state.ttl ?? Math.max(state.retention ?? 0, state.idle_timeout ?? 0, CONFIG.ttl);
+  const status = state.status === 'expired' ? 'open' : state.status;
+  const room = { ...state, ttl, status, messages, waiters: new Set(), dirty: legacy || status !== state.status };
+  if (status === 'open') (delete room.delete_after, (room.ended_at = null));
+  return room;
 }
 
-// When an ended room is deleted. Fixed when the room ends, from the retention it was created with,
-// so changing RETENTION later never breaks what joiners were told.
-const deleteAfter = (room) => room.delete_after || iso(Date.parse(room.ended_at) + room.retention * 1000);
+// When a room is deleted: one clock. Open rooms: TTL after the last activity (rolling).
+// Closed rooms: TTL after the close (fixed). Stamped per room, so changing TTL later never
+// breaks what joiners were told.
+const deleteAfter = (room) => room.delete_after || iso(Date.parse(room.last_activity) + room.ttl * 1000);
 
 function persist(room) {
   const { messages, waiters, dirty, ...state } = room;
@@ -175,12 +180,12 @@ function end(room, status, reason) {
   if (room.status !== 'open') return;
   room.status = status;
   room.ended_at = iso(Date.now());
-  room.delete_after = iso(Date.now() + room.retention * 1000);
+  room.delete_after = iso(Date.now() + room.ttl * 1000);
   system(room, reason);
   persist(room);
 }
 
-// A room ends after its idle timeout; an ended room is deleted after the retention period.
+// A room is deleted TTL after its last activity, or TTL after its host closed it.
 function sweep() {
   const now = Date.now();
   for (const room of rooms.values()) {
@@ -199,10 +204,7 @@ function sweep() {
       room.last_activity = iso(now);
       room.dirty = true;
     }
-    if (room.status === 'open' && now - Date.parse(room.last_activity) > room.idle_timeout * 1000) {
-      end(room, 'expired', `room ended: no activity for ${humanDuration(room.idle_timeout)}`);
-    }
-    if (room.status !== 'open' && now > Date.parse(deleteAfter(room))) {
+    if (now > Date.parse(deleteAfter(room))) {
       store.remove(room.id);
       rooms.delete(room.id);
     } else if (room.dirty) {
@@ -308,8 +310,8 @@ function roomVars(room, base) {
   const people = room.participants.map((p) => `${p.handle}${p.role === 'host' ? ' (host)' : ''}${p.left ? ' (left)' : ''}`).join(', ');
   const lifetime =
     room.status === 'open'
-      ? `ends after ${humanDuration(room.idle_timeout)} without activity`
-      : `${room.status} at ${room.ended_at}; readable until ${deleteAfter(room)}`;
+      ? `deleted ${humanDuration(room.ttl)} after its last activity (${room.last_activity})`
+      : `closed at ${room.ended_at}; readable until ${deleteAfter(room)}`;
   return {
     id: room.id,
     base,
@@ -318,7 +320,7 @@ function roomVars(room, base) {
     lifetime,
     participants: people,
     topic: room.topic ? room.topic.split('\n').map((l) => `> ${l}`).join('\n') : '> (none given)',
-    retention: humanDuration(room.retention),
+    ttl: humanDuration(room.ttl),
     max_body: CONFIG.maxBody,
     max_wait: CONFIG.maxWait,
   };
@@ -340,7 +342,7 @@ async function handle(req, res) {
   const method = req.method === 'HEAD' ? 'GET' : req.method;
 
   if (parts.length === 0 && method === 'GET') {
-    const vars = { base, retention: humanDuration(CONFIG.retention), idle_default: humanDuration(CONFIG.idleDefault) };
+    const vars = { base, ttl: humanDuration(CONFIG.ttl) };
     const md = render(DOCS['index.md'], vars);
     if (wantsHtml(req)) return send(res, 200, render(DOCS['index.html'], { ...vars, markdown: escapeHtml(md) }), 'text/html');
     return send(res, 200, md, 'text/markdown');
@@ -355,11 +357,12 @@ async function handle(req, res) {
   if (parts.length === 0 && method === 'POST') {
     rateLimit(`create ${clientAddress(req)}`, CONFIG.rateCreate, 3600, 'rooms created');
     const f = parseFields(await readBody(req), req.headers['content-type'], url.searchParams, { form: true });
-    if (f.idle !== undefined && seconds(f.idle, null) === null) {
-      throw new HttpError(400, 'invalid idle value', 'Use seconds or a unit: 3600, 90m, 72h, 7d.');
+    const wanted = f.ttl ?? f.idle; // `idle` was the earlier name
+    if (wanted !== undefined && seconds(wanted, null) === null) {
+      throw new HttpError(400, 'invalid ttl value', 'Use seconds or a unit: 3600, 90m, 72h, 7d.');
     }
-    let idle = Math.max(seconds(f.idle, CONFIG.idleDefault), CONFIG.idleMin);
-    if (CONFIG.idleMax) idle = Math.min(idle, CONFIG.idleMax);
+    let ttl = Math.max(seconds(wanted, CONFIG.ttl), CONFIG.ttlMin);
+    if (CONFIG.ttlMax) ttl = Math.min(ttl, CONFIG.ttlMax);
     const now = iso(Date.now());
     const room = {
       id: rand(9),
@@ -367,8 +370,7 @@ async function handle(req, res) {
       status: 'open',
       created_at: now,
       last_activity: now,
-      idle_timeout: idle,
-      retention: CONFIG.retention, // stamped now: what joiners are told stays true
+      ttl, // stamped now: what joiners are told stays true if TTL changes later
       ended_at: null,
       participants: [],
       messages: [],
@@ -387,14 +389,14 @@ async function handle(req, res) {
       token: me.token,
       role: 'host',
       cursor: 1, // message 1 is the host's own "created the room"
-      idle_timeout: idle,
+      ttl,
       next: `The room never notifies you. To hear when someone joins or writes, long-poll with your token and repeat: GET ${roomUrl}/messages?since=1&wait=50&format=text`,
     });
   }
 
   if (parts[0] === 'r' && parts[1]) {
     const room = rooms.get(parts[1]);
-    if (!room) throw new HttpError(404, 'no such room', 'It may have ended and passed its retention period. Rooms are ephemeral.', NOINDEX);
+    if (!room) throw new HttpError(404, 'no such room', 'Rooms are deleted after a while without activity. This one is gone.', NOINDEX);
     const action = parts[2];
 
     if (room.tombstone) {
@@ -527,7 +529,7 @@ async function handle(req, res) {
         created_at: room.created_at,
         messages_removed: room.messages.length,
         participants: room.participants.length,
-        delete_after: iso(now + room.retention * 1000),
+        delete_after: iso(now + room.ttl * 1000),
       };
       room.status = 'purged';
       for (const w of [...room.waiters]) w.flush();

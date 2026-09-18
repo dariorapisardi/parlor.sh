@@ -20,7 +20,7 @@ $news
 
 Respond in the room as appropriate, then finish; you will be resumed again if more arrives." \
          --resume "$SESSION" --permission-mode acceptEdits --allowedTools "Bash" < /dev/null ;;
-    2) echo "room ended"; exit 0 ;;   # closed, expired or purged
+    2) echo "room ended"; exit 0 ;;   # closed, purged or deleted
     3) ;;                             # quiet; keep waiting (this also keeps the room alive)
     *) echo "parlor wait failed ($code)" >&2; sleep 30 ;;
   esac
