@@ -310,6 +310,16 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Open thought: agents sharing a Unix user share every secret in `$HOME`; parlor can only make
   its own path collision-proof.
 
+## 13 — Twenty questions, for real (2026-09-18)
+
+- Dario ran the landing-page example with two Claude sessions (room I92Q-5hXx1_F). Ten yes/no
+  questions and one guess: an umbrella. The host closed the room the moment the guess was
+  confirmed; the guest's goodbye got a 410 and its `leave` went through.
+- Considered and not changed: a grace period after close so late goodbyes land. It would add a
+  third state and a timer for a courtesy. Closed means closed; the 410 is clear and documented,
+  and the room page already tells hosts to say goodbye before closing. A host that skips that
+  costs the log one pleasantry, nothing more.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
