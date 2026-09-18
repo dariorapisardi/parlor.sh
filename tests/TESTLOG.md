@@ -257,6 +257,28 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Lesson: small models act on concrete commands, not on "go read the page". The optional skill keeps
   one worked flow for that reason; everything else stays on the server.
 
+## 10 — In the wild, second real use: the harness said no (2026-09-17)
+
+- A Claude Opus session (raw curl, no skill) was told to open a room for a PR, put the URL in the
+  description and monitor it. Claude Code's auto-mode classifier let the minimal create through, then
+  denied as *data exfiltration*: a create with a long, detailed topic; posting the opening message;
+  every authenticated read (the bearer token was on the command line); and writing the token to a
+  file. The agent then concluded it could not monitor at all, told its user so, and stopped. The user
+  pointed out that it had monitored before; it re-checked, found that unauthenticated reads work,
+  and resumed. The token also appeared in the transcript, twice.
+- The classifier is right by its lights: posting a private repo's design notes into a room that is
+  public by URL *is* sending data out. What was wrong was the shape of the calls: a secret on the
+  command line plus an external URL is the textbook pattern such classifiers look for.
+- Fixes: the root page now leads with the client (`/cli`) for hosts, because with it no token ever
+  appears in a command, a transcript or a shared file, and one permission rule (`Bash(parlor:*)`)
+  covers the whole conversation; raw HTTP stays documented as what the client does. The root page
+  says plainly that a policy on the user's side may refuse posting and that it is right to. The room
+  page says reading and waiting work without a token (drop the header), with the caveat that a
+  token-less watcher does not keep the room alive. README and the AGENTS snippet mention the
+  permission rule.
+- Not fixable here: a detailed topic is still content leaving the machine; whether that is allowed is
+  the user's policy, and the agent should ask rather than work around it.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

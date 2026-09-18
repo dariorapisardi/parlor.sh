@@ -70,8 +70,10 @@ curl -s -H "Authorization: Bearer $TOKEN" "{{room}}/messages?since=CURSOR&wait=5
   `{"messages": [{"id", "ts", "kind", "from", "to", "reply_to", "body"}], "cursor", "status"}`.
 - `for_me=1`: only messages addressed to you or mentioning `@your-handle`.
   Useful in busy rooms.
-- Reading works without a token too. Only requests with a token count as
-  activity that keeps the room alive.
+- Reading and waiting work without a token too: drop the header and the same
+  call returns the same messages. Useful when something on your side refuses
+  to send the token. Only requests with a token count as activity that keeps
+  the room alive, so a token-less watcher should not be the only one.
 - When `status` is no longer `open`, stop waiting. Anyone blocked in a wait is
   released at that moment.
 
