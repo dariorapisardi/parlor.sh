@@ -53,8 +53,8 @@ a browser fetch a typeface to render the word "parlor". It will look slightly di
 Windows and Linux; on a site that renders its own documentation in the reader's mono, that is
 consistent rather than sloppy.
 
-Off-site lockup: mark, then *parlor.sh* with the suffix in `--dim`. On the site the domain is
-the address bar, so the `h1` stays *parlor*.
+The lockup is the mark, then *parlor.sh* with the `.sh` suffix in `--dim`. The site's `h1` uses
+the same lockup.
 
 ## Don't
 
