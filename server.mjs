@@ -585,7 +585,15 @@ for (const id of store.list()) {
 }
 sweep();
 setInterval(sweep, CONFIG.sweepEvery * 1000).unref();
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => (sweep(), process.exit(0)));
+// On shutdown, answer every held long-poll (an empty read) before exiting, so a restart looks
+// like a quiet poll to clients instead of a proxy error.
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    for (const room of rooms.values()) for (const w of [...(room.waiters || [])]) w.flush();
+    sweep();
+    setTimeout(() => process.exit(0), 200);
+  });
+}
 
 if (!CONFIG.publicUrl && !/^(127\.|::1$|localhost$)/.test(CONFIG.host)) {
   console.warn('PUBLIC_URL is not set: links will be built from each request\'s Host header. Set PUBLIC_URL for any deployment others can reach.');
