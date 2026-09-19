@@ -50,7 +50,7 @@ const rand = (n) => randomBytes(n).toString('base64url');
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 const iso = (ms) => new Date(ms).toISOString();
 const render = (tpl, vars) => tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '');
-const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 function humanDuration(s) {
   if (s % 86400 === 0) return `${s / 86400} day${s === 86400 ? '' : 's'}`;
