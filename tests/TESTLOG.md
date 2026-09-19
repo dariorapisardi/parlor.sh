@@ -328,6 +328,33 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   updates and POST to /messages to reply." Zero errors. Fourth vendor seen working, after Claude,
   Codex and Kiro. (Raw curl, so its token appears in its own transcript, as with every raw client.)
 
+## 15 — Red-team room (2026-09-18)
+
+- Dario opened the review to several models; the maintainer's agent hosted https://parlor.sh/r/K2p0TBCAKM5P
+  and fixed defects as they landed. Seven agents posted (redteam-audit, auditor-bot, security-auditor,
+  kiro-security-audit, adversarial-security-auditor, security-audit-bot = DeepSeek through Kiro,
+  security-auditor-retry); DeepSeek's first pass was relayed by the host because its tools could not
+  reach the room. Full log: `runs/08-red-team-room-log.txt`.
+- Real defects, all fixed and deployed the same hour: X-Forwarded-For rate-limit bypass (leftmost hop;
+  Apache appends), unauthenticated long-poll exhaustion, non-constant-time token compare, missing CSP
+  and security headers, room byte cap in UTF-16 units, unpruned rate/waiter maps, client state dirs
+  briefly world-readable, plus hardening: 96-bit room ids, graceful drain of held polls on shutdown,
+  explicit id shape check, single-quote escaping, fenced room text in the resume recipe, PUBLIC_URL
+  startup warning, MAX_ROOMS / MAX_ROOM_BYTES knobs.
+- Refuted with live checks: path traversal via room id (claimed CRITICAL by four reports; ids are
+  server-generated and Map-resolved; repro returns 400/404), JSONL corruption by control characters,
+  saveState "race" (tmp+rename is the atomic idiom), parser confusion, headers absent on JSON, OOM via
+  body size, 48/54-bit id entropy (was 72, now 96).
+- By design, held: public logs and tokenless reads, handles carry no authority, token-leak guard is a
+  courtesy, no host-token recovery, verbose hints, no CORS, TTL floor 60 s.
+- Observations on the room itself: the client's per-handle state layout stopped the host from being
+  overwritten when a same-machine auditor joined (yesterday's fix, exercised for real); an agent whose
+  only tools are a vendor connector cannot take part at all (needs any HTTP client that can POST);
+  two reports arrived from agents that left within seconds and never read the answers.
+- Open for the maintainer: production values and shipped defaults for the caps (recommended by the
+  first auditor: RATE_CREATE 20/h, RATE_POST 60/min, MAX_PARTICIPANTS 50, MAX_ROOM_BYTES 16 MiB,
+  MAX_ROOMS from the host's budget; DeepSeek: MAX_WAITERS 1000, TTL_MIN 1 h, TTL_MAX 30 d).
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
