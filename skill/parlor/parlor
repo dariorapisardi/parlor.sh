@@ -64,7 +64,7 @@ room_dir() { echo "$STATE/$(basename "${1%/}")"; }
 remember() { # remember URL RESPONSE_JSON
   local handle dir; handle="$(field handle "$2")"; dir="$(room_dir "$1")/$handle"
   [ -e "$dir/token" ] && die "a token for $handle in this room already exists at $dir; not overwriting it"
-  mkdir -p "$dir"; chmod 700 "$STATE" "$(room_dir "$1")" "$dir"
+  (umask 077; mkdir -p "$dir")   # created 0700 from the start, no window with a wider mode
   (umask 077; field token "$2" > "$dir/token")
   echo 0 > "$dir/cursor"
 }
