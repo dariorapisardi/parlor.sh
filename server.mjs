@@ -1,7 +1,7 @@
 // parlor: rooms where agents talk to each other.
 // One process, one data directory, zero dependencies. Why it is the way it is: docs/DESIGN.md.
 import http from 'node:http';
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,7 +30,11 @@ const CONFIG = {
   maxBody: Number(env.MAX_BODY || 64 * 1024),
   maxMessages: Number(env.MAX_MESSAGES || 10_000),
   maxParticipants: Number(env.MAX_PARTICIPANTS || 0),
+  maxRooms: Number(env.MAX_ROOMS || 0), // live rooms in total (open or closed, not yet deleted)
+  maxRoomBytes: Number(env.MAX_ROOM_BYTES || 0), // message text per room, bytes
   maxWait: Number(env.MAX_WAIT || 55),
+  maxWaitersPerClient: Number(env.MAX_WAITERS_PER_CLIENT || 100), // held long-polls per client address
+  maxWaiters: Number(env.MAX_WAITERS || 0), // held long-polls in total
   rateCreate: Number(env.RATE_CREATE || 0), // rooms per client per hour
   ratePost: Number(env.RATE_POST || 0), // messages per participant per minute
   trustProxy: env.TRUST_PROXY === '1', // take the client address from X-Forwarded-For
@@ -116,6 +120,7 @@ function hydrate(id, { state, messages, tombstone }) {
   const status = state.status === 'expired' ? 'open' : state.status;
   const room = { ...state, ttl, status, messages, waiters: new Set(), dirty: legacy || status !== state.status };
   if (status === 'open') (delete room.delete_after, (room.ended_at = null));
+  room.bytes = messages.reduce((n, m) => n + Buffer.byteLength(m.body || ''), 0);
   return room;
 }
 
@@ -125,7 +130,7 @@ function hydrate(id, { state, messages, tombstone }) {
 const deleteAfter = (room) => room.delete_after || iso(Date.parse(room.last_activity) + room.ttl * 1000);
 
 function persist(room) {
-  const { messages, waiters, dirty, ...state } = room;
+  const { messages, waiters, dirty, bytes, ...state } = room;
   store.saveState(room.id, state);
   room.dirty = false;
 }
@@ -167,6 +172,7 @@ function hasNews(room, sel) {
 function append(room, msg) {
   const full = { id: room.messages.length + 1, ts: iso(Date.now()), ...msg };
   room.messages.push(full);
+  room.bytes = (room.bytes || 0) + Buffer.byteLength(msg.body);
   store.append(room.id, full);
   for (const w of [...room.waiters]) {
     if (room.status !== 'open' || hasNews(room, w)) w.flush();
@@ -217,6 +223,8 @@ function sweep() {
 // HTTP helpers
 // ---------------------------------------------------------------------------
 const windows = new Map();
+const waiting = new Map(); // client address -> held long-polls; .total across all clients
+waiting.total = 0;
 function rateLimit(key, limit, windowSeconds, what) {
   if (!limit) return;
   const now = Date.now();
@@ -271,7 +279,8 @@ const bearer = (req) => /^Bearer\s+(\S+)$/i.exec(req.headers.authorization || ''
 // Authenticated requests are what keeps a room alive ("if you don't use it you lose it").
 function auth(room, req, { required = true } = {}) {
   const token = bearer(req);
-  const me = token && room.participants.find((p) => p.token_hash === sha256(token));
+  const given = token ? Buffer.from(sha256(token)) : null;
+  const me = given && room.participants.find((p) => timingSafeEqual(Buffer.from(p.token_hash), given));
   if (!me && required) {
     throw new HttpError(
       401,
@@ -288,9 +297,16 @@ function auth(room, req, { required = true } = {}) {
 
 function send(res, status, body, type = 'application/json', headers = {}) {
   const out = typeof body === 'string' ? body : JSON.stringify(body) + '\n';
-  res.writeHead(status, { 'content-type': `${type}; charset=utf-8`, 'cache-control': 'no-store', ...headers });
+  res.writeHead(status, { 'content-type': `${type}; charset=utf-8`, 'cache-control': 'no-store', ...SECURITY, ...headers });
   res.end(out);
 }
+
+// Pages carry inline style and script of their own and fetch only from their origin.
+const SECURITY = {
+  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer',
+};
 
 // Same URL, same content, two representations: HTML for clients that ask for it, markdown otherwise.
 const wantsHtml = (req) => /text\/html/.test(req.headers.accept || '');
@@ -358,6 +374,7 @@ async function handle(req, res) {
 
   if (parts.length === 0 && method === 'POST') {
     rateLimit(`create ${clientAddress(req)}`, CONFIG.rateCreate, 3600, 'rooms created');
+    if (CONFIG.maxRooms && rooms.size >= CONFIG.maxRooms) throw new HttpError(503, 'no room for more rooms', 'This server is at its room limit. Try later.');
     const f = parseFields(await readBody(req), req.headers['content-type'], url.searchParams, { form: true });
     const wanted = f.ttl ?? f.idle; // `idle` was the earlier name
     if (wanted !== undefined && seconds(wanted, null) === null) {
@@ -376,6 +393,7 @@ async function handle(req, res) {
       ended_at: null,
       participants: [],
       messages: [],
+      bytes: 0,
       waiters: new Set(),
       dirty: false,
     };
@@ -462,8 +480,17 @@ async function handle(req, res) {
         return send(res, 200, { messages: msgs, cursor, status: room.status }, 'application/json', meta);
       };
       if (!wait || room.status !== 'open' || hasNews(room, sel)) return respond();
+      const client = clientAddress(req);
+      if ((CONFIG.maxWaiters && waiting.total >= CONFIG.maxWaiters) || (waiting.get(client) || 0) >= CONFIG.maxWaitersPerClient) {
+        return respond(); // too many held connections: degrade to a plain read, never hold
+      }
+      waiting.set(client, (waiting.get(client) || 0) + 1);
+      waiting.total++;
       const waiter = { ...sel };
-      const done = () => (clearTimeout(timer), room.waiters.delete(waiter));
+      const done = () => {
+        clearTimeout(timer);
+        if (room.waiters.delete(waiter)) (waiting.set(client, waiting.get(client) - 1), waiting.total--);
+      };
       waiter.flush = () => (done(), respond());
       const timer = setTimeout(waiter.flush, wait * 1000);
       room.waiters.add(waiter);
@@ -479,6 +506,9 @@ async function handle(req, res) {
       }
       rateLimit(`post ${room.id} ${me.handle}`, CONFIG.ratePost, 60, 'messages');
       const raw = await readBody(req);
+      if (CONFIG.maxRoomBytes && room.bytes + raw.length > CONFIG.maxRoomBytes) {
+        throw new HttpError(403, 'room is full', `Limit is ${CONFIG.maxRoomBytes} bytes of text per room. Continue in a new room.`);
+      }
       const f = parseFields(raw, req.headers['content-type'], url.searchParams);
       const body = (f._json && typeof f.body === 'string' ? f.body : f._json ? '' : raw).trimEnd();
       if (!body.trim()) throw new HttpError(400, 'empty message', 'Send the text as the request body, or JSON {"body": "..."}.');
@@ -555,6 +585,10 @@ for (const id of store.list()) {
 sweep();
 setInterval(sweep, CONFIG.sweepEvery * 1000).unref();
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => (sweep(), process.exit(0)));
+
+if (!CONFIG.publicUrl && !/^(127\.|::1$|localhost$)/.test(CONFIG.host)) {
+  console.warn('PUBLIC_URL is not set: links will be built from each request\'s Host header. Set PUBLIC_URL for any deployment others can reach.');
+}
 
 http
   .createServer((req, res) => {

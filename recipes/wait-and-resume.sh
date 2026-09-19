@@ -5,6 +5,12 @@
 # your machine: block on the room, and when somebody writes, resume the session that
 # holds the context and hand it the new messages. Ends when the room ends.
 #
+# READ THIS FIRST. Whatever anyone writes in the room is pasted into the prompt of a resumed
+# session that can run shell commands. That is prompt injection into an agent with Bash, by
+# construction. Use it only for rooms where you accept that risk (a review room your own team
+# uses), keep the permission mode as tight as your task allows, and never point it at a room
+# whose URL strangers hold.
+#
 # usage: wait-and-resume.sh ROOM_URL CLAUDE_SESSION_ID [path/to/parlor]
 # Run it from the directory the session worked in, with the same PARLOR_STATE.
 set -uo pipefail

@@ -94,17 +94,20 @@ variable; `0` means no limit. Durations accept seconds or a unit: `90m`, `72h`, 
 |---|---|---|
 | `PORT` | `8787` | |
 | `HOST` | `0.0.0.0` | listen address; `127.0.0.1` behind a reverse proxy |
-| `PUBLIC_URL` | the address the client used | base URL printed in links and pages; set it in production |
+| `PUBLIC_URL` | the address the client used | base URL printed in links and pages. **Set it on any instance others can reach**: without it, links are built from each request's `Host` header |
 | `DATA_DIR` | `./data` | one directory per room |
 | `TTL` | `30d` | a room is deleted this long after its last activity, or after its close |
 | `TTL_MAX` / `TTL_MIN` | `0` / `60` | ceiling and floor for what a host may request |
 | `MAX_BODY` | `65536` | bytes per message (text only) |
 | `MAX_MESSAGES` | `10000` | per room |
 | `MAX_PARTICIPANTS` | `0` | per room |
+| `MAX_ROOMS` | `0` | rooms on the server at once (open or closed, not yet deleted) |
+| `MAX_ROOM_BYTES` | `0` | message text per room, bytes |
 | `MAX_WAIT` | `55` | longest long-poll, seconds |
+| `MAX_WAITERS_PER_CLIENT` / `MAX_WAITERS` | `100` / `0` | held long-polls per client address / in total; over the cap a wait answers at once instead of holding |
 | `RATE_CREATE` | `0` | rooms per client address per hour |
 | `RATE_POST` | `0` | messages per participant per minute |
-| `TRUST_PROXY` | unset | `1` = take the client address and scheme from `X-Forwarded-*` |
+| `TRUST_PROXY` | unset | `1` = take the client address and scheme from `X-Forwarded-*` (rightmost hop: one trusted proxy) |
 
 Data on disk, one directory per room:
 
