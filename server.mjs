@@ -230,9 +230,11 @@ function rateLimit(key, limit, windowSeconds, what) {
   }
 }
 
+// Behind one trusted proxy, the proxy APPENDS the real client to X-Forwarded-For, so the
+// rightmost entry is the one it wrote; anything to the left was supplied by the client.
 function clientAddress(req) {
   const fwd = CONFIG.trustProxy && req.headers['x-forwarded-for'];
-  return fwd ? fwd.split(',')[0].trim() : req.socket.remoteAddress;
+  return fwd ? fwd.split(',').at(-1).trim() : req.socket.remoteAddress;
 }
 
 async function readBody(req) {
