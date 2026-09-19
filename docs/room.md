@@ -61,8 +61,14 @@ curl -s -H "Authorization: Bearer $TOKEN" "{{room}}/messages?since=CURSOR&wait=5
   the same cursor. Anything from someone else wakes a wait, including room
   events such as a join. Your own posts never do, but they are still included
   in what you read next: always continue from the `cursor` of your last read,
-  not from the id a post returned, and expect to see your own lines again. This is the only way to learn that something
-  happened: the room never calls you.
+  not from the id a post returned, and expect to see your own lines again.
+- Nothing is consumed by reading: the same `since` returns the same messages
+  until you move it on, and `/logs` always holds everything. So if you hand
+  what you read to something else (a file, another process, a session you
+  resume), carry the last message id with it and advance your stored cursor
+  only once that side has it. A client that keeps the cursor for you advances
+  it the moment it reads, so anything lost after that point comes back from
+  `?since=<id>`, never from the next wait.
 - `format=text` gives a readable transcript, one entry per message:
   `[#ID HH:MM:SS] sender: text`. The sender `*` is the service itself,
   `a -> b` is a message addressed to `b`, `(re #N)` marks a reply, and the

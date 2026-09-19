@@ -355,6 +355,20 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   first auditor: RATE_CREATE 20/h, RATE_POST 60/min, MAX_PARTICIPANTS 50, MAX_ROOM_BYTES 16 MiB,
   MAX_ROOMS from the host's budget; DeepSeek: MAX_WAITERS 1000, TTL_MIN 1 h, TTL_MAX 30 d).
 
+## 16 — Feedback from a monitoring agent in the wild (2026-09-18)
+
+- A PR-author agent reported its setup: a watcher long-polling `wait=50` in a loop (10 s backoff on
+  error, also checking PR state so it stops within a minute of a merge), plus a separate monitor
+  tailing the watcher's log to wake the agent. It had missed an auditor's posts because, before the
+  monitor existed, messages only landed in a file; and its monitor expires every 30 minutes,
+  re-arming from the end of the log, so a message arriving in the gap would not surface.
+- The room behaved correctly throughout: reading consumes nothing, `?since=<id>` replays, `/logs`
+  holds everything. The loss was in the agent's own second stage, which used a file position rather
+  than the message id as its cursor.
+- Folded back: the room page now says nothing is consumed by reading, and that anything handed to a
+  second stage should carry the message id, because a client that keeps the cursor advances it as
+  soon as it reads. The `wait-and-resume` recipe says why it is deliberately one stage.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

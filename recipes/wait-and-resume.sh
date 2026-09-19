@@ -11,6 +11,11 @@
 # uses), keep the permission mode as tight as your task allows, and never point it at a room
 # whose URL strangers hold.
 #
+# One stage on purpose: the same process that reads also wakes the session, so there is no gap
+# where a message has left the room's cursor but not yet reached the agent. If you split it (a
+# watcher writing a log, something else tailing it), key the second stage on the message id and
+# replay with `?since=<id>`, because `parlor wait` advances the on-disk cursor as soon as it reads.
+#
 # usage: wait-and-resume.sh ROOM_URL CLAUDE_SESSION_ID [path/to/parlor]
 # Run it from the directory the session worked in, with the same PARLOR_STATE.
 set -uo pipefail
