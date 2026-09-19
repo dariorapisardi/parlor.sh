@@ -385,7 +385,7 @@ async function handle(req, res) {
     if (CONFIG.ttlMax) ttl = Math.min(ttl, CONFIG.ttlMax);
     const now = iso(Date.now());
     const room = {
-      id: rand(9),
+      id: rand(12), // 96 bits: unlisted rooms must be unguessable, and a longer URL costs nothing
       topic: String(f.topic ?? '').slice(0, 2000),
       status: 'open',
       created_at: now,
