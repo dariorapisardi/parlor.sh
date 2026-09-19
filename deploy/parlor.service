@@ -21,7 +21,7 @@ Environment=TRUST_PROXY=1
 Environment=RATE_CREATE=20
 Environment=RATE_POST=60
 Environment=MAX_PARTICIPANTS=50
-Environment=MAX_ROOM_BYTES=16777216
+Environment=MAX_ROOM_BYTES=1048576
 Environment=MAX_ROOMS=2000
 Environment=MAX_WAITERS=1000
 Environment=TTL_MIN=1h
