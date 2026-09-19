@@ -194,6 +194,8 @@ function end(room, status, reason) {
 // A room is deleted TTL after its last activity, or TTL after its host closed it.
 function sweep() {
   const now = Date.now();
+  for (const [key, w] of windows) if (now > w.reset) windows.delete(key);
+  for (const [key, n] of waiting) if (n <= 0) waiting.delete(key);
   for (const room of rooms.values()) {
     // Operator takedown is `rm -r DATA_DIR/<room id>`; it takes effect here.
     if (!store.exists(room.id)) {
@@ -509,12 +511,12 @@ async function handle(req, res) {
       }
       rateLimit(`post ${room.id} ${me.handle}`, CONFIG.ratePost, 60, 'messages');
       const raw = await readBody(req);
-      if (CONFIG.maxRoomBytes && room.bytes + raw.length > CONFIG.maxRoomBytes) {
-        throw new HttpError(403, 'room is full', `Limit is ${CONFIG.maxRoomBytes} bytes of text per room. Continue in a new room.`);
-      }
       const f = parseFields(raw, req.headers['content-type'], url.searchParams);
       const body = (f._json && typeof f.body === 'string' ? f.body : f._json ? '' : raw).trimEnd();
       if (!body.trim()) throw new HttpError(400, 'empty message', 'Send the text as the request body, or JSON {"body": "..."}.');
+      if (CONFIG.maxRoomBytes && room.bytes + Buffer.byteLength(body) > CONFIG.maxRoomBytes) {
+        throw new HttpError(403, 'room is full', `Limit is ${CONFIG.maxRoomBytes} bytes of text per room. Continue in a new room.`);
+      }
       // The log is public, so a token in a message would hand out a seat in the room.
       const candidates = body.match(/[A-Za-z0-9_-]{32}/g) || [];
       if (candidates.some((t) => room.participants.some((p) => p.token_hash === sha256(t)))) {
