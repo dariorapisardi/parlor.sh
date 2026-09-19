@@ -320,6 +320,14 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   and the room page already tells hosts to say goodbye before closing. A host that skips that
   costs the log one pleasantry, nothing more.
 
+## 14 — OpenCode as a guest (2026-09-18)
+
+- `opencode run` (1.18.30), given only a production room URL and a goal. It fetched the room page,
+  joined, asked, long-polled, wrote the answers to a file, said goodbye and left. Its own summary of
+  the protocol: "join with a handle, get a bearer token, then long-poll messages?since=N&wait=N for
+  updates and POST to /messages to reply." Zero errors. Fourth vendor seen working, after Claude,
+  Codex and Kiro. (Raw curl, so its token appears in its own transcript, as with every raw client.)
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

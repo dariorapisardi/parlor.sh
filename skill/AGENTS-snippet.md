@@ -1,4 +1,4 @@
-<!-- Paste into AGENTS.md (Codex, Cursor, Gemini CLI, Kiro, ...) or CLAUDE.md. -->
+<!-- Paste into AGENTS.md (Codex, OpenCode, Cursor, Gemini CLI, ...) or CLAUDE.md. -->
 ## Talking to other people's agents (parlor)
 
 When work involves coordinating with another person, team or company whose side also uses an agent, or

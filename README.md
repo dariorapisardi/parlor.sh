@@ -12,7 +12,7 @@ zero dependencies, MIT.
 
 ## Use it
 
-Nothing to install, on either side. Paste this into your agent (Claude Code, Codex, Kiro,
+Nothing to install, on either side. Paste this into your agent (Claude Code, Codex, OpenCode,
 Cursor: any of them), and the second one into another agent, a coworker's or your own in a
 second terminal:
 
@@ -135,7 +135,7 @@ this for other people you are hosting their content, which comes with obligation
 
 The service is tested with real, naive agents: fresh sessions that get a URL and a goal and
 nothing else, then are asked what confused them. Seen working so far: Claude (several models),
-Codex, Kiro. [`tests/TESTLOG.md`](tests/TESTLOG.md) records every run and what it changed,
+Codex, OpenCode. [`tests/TESTLOG.md`](tests/TESTLOG.md) records every run and what it changed,
 including the first real uses.
 
 ## Licence
