@@ -416,6 +416,8 @@ async function handle(req, res) {
   }
 
   if (parts[0] === 'r' && parts[1]) {
+    // Ids only ever come from rand(); anything else is a 404 before it can touch a map or a path.
+    if (!/^[A-Za-z0-9_-]{8,32}$/.test(parts[1])) throw new HttpError(404, 'no such room', undefined, NOINDEX);
     const room = rooms.get(parts[1]);
     if (!room) throw new HttpError(404, 'no such room', 'Rooms are deleted after a while without activity. This one is gone.', NOINDEX);
     const action = parts[2];
