@@ -240,6 +240,7 @@ function rateLimit(key, limit, windowSeconds, what) {
 
 // Behind one trusted proxy, the proxy APPENDS the real client to X-Forwarded-For, so the
 // rightmost entry is the one it wrote; anything to the left was supplied by the client.
+// Assumes exactly one trusted proxy: revisit (hop count) if a CDN or second proxy is added.
 function clientAddress(req) {
   const fwd = CONFIG.trustProxy && req.headers['x-forwarded-for'];
   return fwd ? fwd.split(',').at(-1).trim() : req.socket.remoteAddress;
