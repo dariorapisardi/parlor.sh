@@ -17,7 +17,15 @@ Environment=PORT=8787
 Environment=PUBLIC_URL=https://parlor.sh
 Environment=DATA_DIR=/var/lib/parlor
 Environment=TRUST_PROXY=1
-Environment=RATE_CREATE=30
+# Limits for a public instance (what parlor.sh runs). Generous for real use, bounded for abuse.
+Environment=RATE_CREATE=20
+Environment=RATE_POST=60
+Environment=MAX_PARTICIPANTS=50
+Environment=MAX_ROOM_BYTES=16777216
+Environment=MAX_ROOMS=2000
+Environment=MAX_WAITERS=1000
+Environment=TTL_MIN=1h
+Environment=TTL_MAX=30d
 
 # The process needs its code (read-only) and its data directory, nothing else.
 StateDirectory=parlor
