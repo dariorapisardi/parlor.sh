@@ -27,6 +27,7 @@ const CONFIG = {
   ttlMax: seconds(env.TTL_MAX, 0), // ceiling for what a host may request
   ttlMin: seconds(env.TTL_MIN, 60),
   sweepEvery: seconds(env.SWEEP_EVERY, 30),
+  drainGraceMs: Number(env.DRAIN_GRACE_MS || 250), // after a shutdown signal, keep answering this long
   maxBody: Number(env.MAX_BODY || 64 * 1024),
   maxMessages: Number(env.MAX_MESSAGES || 10_000),
   maxParticipants: Number(env.MAX_PARTICIPANTS || 0),
@@ -298,9 +299,14 @@ function auth(room, req, { required = true } = {}) {
   return me || null;
 }
 
+// Set from the moment a shutdown starts: no poll is held once we are going down, and every
+// answer tells the proxy not to keep the connection to a process that is about to exit.
+let draining = false;
+
 function send(res, status, body, type = 'application/json', headers = {}) {
   const out = typeof body === 'string' ? body : JSON.stringify(body) + '\n';
-  res.writeHead(status, { 'content-type': `${type}; charset=utf-8`, 'cache-control': 'no-store', ...SECURITY, ...headers });
+  const closing = draining ? { connection: 'close' } : {};
+  res.writeHead(status, { 'content-type': `${type}; charset=utf-8`, 'cache-control': 'no-store', ...SECURITY, ...closing, ...headers });
   res.end(out);
 }
 
@@ -484,7 +490,7 @@ async function handle(req, res) {
         if (q.get('format') === 'text') return send(res, 200, formatText(room, msgs, cursor), 'text/plain', meta);
         return send(res, 200, { messages: msgs, cursor, status: room.status }, 'application/json', meta);
       };
-      if (!wait || room.status !== 'open' || hasNews(room, sel)) return respond();
+      if (!wait || draining || room.status !== 'open' || hasNews(room, sel)) return respond();
       const client = clientAddress(req);
       if ((CONFIG.maxWaiters && waiting.total >= CONFIG.maxWaiters) || (waiting.get(client) || 0) >= CONFIG.maxWaitersPerClient) {
         return respond(); // too many held connections: degrade to a plain read, never hold
@@ -589,27 +595,33 @@ for (const id of store.list()) {
 }
 sweep();
 setInterval(sweep, CONFIG.sweepEvery * 1000).unref();
-// On shutdown, answer every held long-poll (an empty read) before exiting, so a restart looks
-// like a quiet poll to clients instead of a proxy error.
-for (const sig of ['SIGINT', 'SIGTERM']) {
-  process.on(sig, () => {
-    for (const room of rooms.values()) for (const w of [...(room.waiters || [])]) w.flush();
-    sweep();
-    setTimeout(() => process.exit(0), 200);
-  });
-}
-
 if (!CONFIG.publicUrl && !/^(127\.|::1$|localhost$)/.test(CONFIG.host)) {
   console.warn('PUBLIC_URL is not set: links will be built from each request\'s Host header. Set PUBLIC_URL for any deployment others can reach.');
 }
 
-http
-  .createServer((req, res) => {
-    handle(req, res).catch((err) => {
-      if (!(err instanceof HttpError)) console.error(err);
-      if (res.headersSent) return res.end();
-      const body = { error: err.status ? err.message : 'internal error', ...(err.hint && { hint: err.hint }) };
-      send(res, err.status || 500, body, 'application/json', err.headers);
-    });
-  })
-  .listen(CONFIG.port, CONFIG.host, () => console.log(`parlor listening on :${CONFIG.port}, ${rooms.size} rooms loaded from ${CONFIG.dataDir}`));
+const server = http.createServer((req, res) => {
+  handle(req, res).catch((err) => {
+    if (!(err instanceof HttpError)) console.error(err);
+    if (res.headersSent) return res.end();
+    const body = { error: err.status ? err.message : 'internal error', ...(err.hint && { hint: err.hint }) };
+    send(res, err.status || 500, body, 'application/json', err.headers);
+  });
+});
+
+// On shutdown, answer every held long-poll (an empty read) before exiting, so a restart looks
+// like a quiet poll to clients instead of a proxy error. A client whose poll we just answered
+// re-polls at once: `draining` makes that arrival an immediate empty read rather than a new
+// held poll, which exit would otherwise kill unanswered.
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    if (draining) return;
+    draining = true;
+    for (const room of rooms.values()) for (const w of [...(room.waiters || [])]) w.flush();
+    sweep();
+    // Keep listening through the grace window: the re-polls that our own drain just provoked
+    // arrive within a millisecond, and an answered poll beats a closed socket.
+    setTimeout(() => process.exit(0), CONFIG.drainGraceMs);
+  });
+}
+
+server.listen(CONFIG.port, CONFIG.host, () => console.log(`parlor listening on :${CONFIG.port}, ${rooms.size} rooms loaded from ${CONFIG.dataDir}`));

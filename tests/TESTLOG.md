@@ -369,6 +369,38 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   second stage should carry the message id, because a client that keeps the cursor advances it as
   soon as it reads. The `wait-and-resume` recipe says why it is deliberately one stage.
 
+## 17 — Every deploy served a 500 to whoever was long-polling (2026-09-19)
+
+- Found while looking at what production can tell us about hitting limits, not from a report:
+  `parlor-access.log` held 46 × 500 and 46 × 502 — equal counts, all on `messages?...&wait=50`,
+  all stamped at the second of a `systemctl restart`. The Apache error log said
+  `AH01102: error reading status line from remote server 127.0.0.1:8787`: the backend closed the
+  connection without writing a status line at all.
+- The drain was not the culprit. Held polls were answered: for each restart the access log shows
+  the held poll's `200` (logged at its receive time), then a `500`, then a `502`, then recovery
+  about 6 s later — the room page's error backoff.
+- Mechanism, reproduced locally and then on the production host under its own Node 18: SIGTERM
+  flushes every waiter, the client (page script or agent loop) re-polls within a millisecond, the
+  process is *still listening*, so `handle()` parks that re-poll as a new waiter — after the drain
+  loop has already run. `process.exit(0)` 200 ms later destroys the socket unanswered. The 502 is
+  the next retry arriving in the gap before the new process binds.
+- Setup: a raw keep-alive client standing in for `mod_proxy_http` (holds a poll, then re-uses the
+  pooled connection exactly as Apache does, and honours `Connection: close`). Before: `EOF after
+  203ms, NO status line`. curl alone cannot show this — it silently retries on a fresh connection
+  and turns the symptom into a connection-refused.
+- Fixed (`server.mjs`): a `draining` flag set on SIGINT/SIGTERM. While draining, a poll is answered
+  at once instead of being held, and every response carries `Connection: close` so the proxy retires
+  that backend connection rather than reusing a process that is about to exit. The listener now
+  stays bound through a short grace window (`DRAIN_GRACE_MS`, default 250) instead of being killed
+  at 200 ms. After: `req2 (re-poll, new conn) : HTTP/1.1 200 OK`, on Node 18 on the production host.
+- Cost, accepted: for those 250 ms a client that re-polls on every success spins, getting empty
+  reads. Bounded, and better than an unanswered socket.
+- Regression: create, tokenless join, long-poll waking on a post, text transcript, bad-token 401,
+  guest-cannot-close 403, host close, rooms surviving a restart, security headers present and no
+  `Connection: close` in healthy operation — 10/10 on the patched build and on the build before it.
+- Not fixed: the 502 in the bind gap. It is inherent to restarting without handing over the socket;
+  systemd socket activation would close it, and no agent has reported it.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
