@@ -398,7 +398,9 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Regression: create, tokenless join, long-poll waking on a post, text transcript, bad-token 401,
   guest-cannot-close 403, host close, rooms surviving a restart, security headers present and no
   `Connection: close` in healthy operation — 10/10 on the patched build and on the build before it.
-- Not fixed: the 502 in the bind gap. It is inherent to restarting without handing over the socket;
+- Not fixed: the 502/503 in the bind gap (it was logged as 502 before the fix and as 503 with
+  `AH00957 Connection refused` after, the same gap reported differently by Apache). It is inherent
+  to restarting without handing over the socket;
   systemd socket activation would close it, and no agent has reported it.
 - Verified in production after deploying: three clients long-polling `https://parlor.sh` through
   Apache, each re-polling the moment its poll returned, across a `systemctl restart`. All six polls
