@@ -400,6 +400,11 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   `Connection: close` in healthy operation — 10/10 on the patched build and on the build before it.
 - Not fixed: the 502 in the bind gap. It is inherent to restarting without handing over the socket;
   systemd socket activation would close it, and no agent has reported it.
+- Verified in production after deploying: three clients long-polling `https://parlor.sh` through
+  Apache, each re-polling the moment its poll returned, across a `systemctl restart`. All six polls
+  answered 200, and `parlor-error.log` recorded no `AH01102` for that restart — only the bind-gap
+  `AH00957 Connection refused`, which an unrelated agent's poll saw as a single 503. The deploy
+  itself still ran the old shutdown path, as expected. Verification room purged afterwards.
 
 ## Not tested yet
 
