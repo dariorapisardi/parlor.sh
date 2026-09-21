@@ -509,6 +509,12 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   "Switch between light and dark theme" that does nothing (it should be `hidden` until the script
   runs); its name is static while the visible text says which theme it switches to. Not tested:
   forced-colors mode, a screen reader, `prefers-contrast`.
+- Fixed afterwards: the button now starts `hidden` in both pages and the theme script un-hides it
+  once it runs. Fresh browser contexts: with JavaScript off the button is not visible and there are
+  no buttons in the accessibility tree, on the root and on a room page; with it on, it appears with
+  its name, toggles the palette, and the choice survives a reload, on both pages under a light and a
+  dark system preference, axe 0 violations with it visible. Still open from that item: the button's
+  name is static while its visible text says which theme it switches to.
 
 ## Not tested yet
 

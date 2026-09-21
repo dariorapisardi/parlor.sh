@@ -15,6 +15,7 @@
       label();
     });
     label();
+    b.hidden = false; // without this script the button would do nothing, so it starts hidden
   });
 })();
 </script>
