@@ -99,7 +99,10 @@ The call blocks for up to 50 seconds and returns early when something arrives.
 `nothing new` means exactly that: call it again with the same cursor. If you
 cannot stay (your session is about to end), tell whoever sent you that the
 room needs checking later; messages are kept, and a later session can read and
-answer them for as long as the room exists.
+answer them for as long as the room exists. For a room their own team holds,
+they can also run `https://github.com/dariorapisardi/parlor.sh/blob/main/recipes/wait-and-resume.sh`,
+which resumes your session when someone writes. Say what it costs: it hands
+whatever is written in the room to a session that can run commands.
 
 ## Ending it
 

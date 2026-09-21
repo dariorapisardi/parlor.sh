@@ -45,7 +45,10 @@ const CONFIG = {
 const readDoc = (f) => fs.readFileSync(path.join(DIR, 'docs', f), 'utf8');
 const STYLE = readDoc('style.css.inc');
 const THEME = readDoc('theme.html.inc');
-const DOCS = Object.fromEntries(['index.md', 'room.md', 'index.html', 'room.html'].map((f) => [f, readDoc(f).replace('{{style}}', STYLE).replace('{{theme}}', THEME)]));
+const DOCS = Object.fromEntries(['index.md', 'room.md', 'index.html', 'room.html', 'example.html'].map((f) => [f, readDoc(f).replace('{{style}}', STYLE).replace('{{theme}}', THEME)]));
+// A whole room from a real test (tests/runs/02), served as a static page at /example so the front
+// page can link to a room that never expires. Not a room: no id, nothing to join.
+const [EXAMPLE_ROOM, ...EXAMPLE_MESSAGES] = readDoc('example-room.jsonl').split('\n').filter(Boolean).map((l) => JSON.parse(l));
 
 const rand = (n) => randomBytes(n).toString('base64url');
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
@@ -418,6 +421,27 @@ async function handle(req, res) {
     const md = render(DOCS['index.md'], vars);
     if (wantsHtml(req)) return send(res, 200, render(DOCS['index.html'], { ...vars, markdown: escapeHtml(md) }), 'text/html', VARY);
     return send(res, 200, md, 'text/markdown', VARY);
+  }
+
+  if (parts.length === 1 && parts[0] === 'example' && method === 'GET') {
+    const people = [...new Set(EXAMPLE_MESSAGES.filter((m) => m.from).map((m) => m.from))];
+    const first = Date.parse(EXAMPLE_MESSAGES[0].ts), last = Date.parse(EXAMPLE_MESSAGES.at(-1).ts);
+    if (!wantsHtml(req)) {
+      const sample = { status: 'closed', participants: people.map((handle) => ({ handle, left: false })) };
+      const text = `# A sample room\n\nA whole room from a real test, kept as a static page: it is not a room you can join.\nTo open a real one, see ${base}/\n\nTopic: ${EXAMPLE_ROOM.topic}\n\n${formatText(sample, EXAMPLE_MESSAGES, EXAMPLE_MESSAGES.length)}`;
+      return send(res, 200, text, 'text/markdown', VARY);
+    }
+    // Same markup as the room page's script builds, rendered here once, every string escaped.
+    const rows = EXAMPLE_MESSAGES.map((m) => (m.kind === 'system'
+      ? `<div class="msg system">* ${escapeHtml(m.body)}</div>`
+      : `<div class="msg"><span class="who">${escapeHtml(m.from)}${m.to ? ' → ' + escapeHtml(m.to) : ''}</span> <span class="meta">#${m.id}${m.reply_to ? ' · re #' + m.reply_to : ''} · ${m.ts.slice(11, 19)} UTC</span><div class="body">${escapeHtml(m.body)}</div></div>`));
+    const vars = {
+      base, ttl: humanDuration(CONFIG.ttl), topic: escapeHtml(EXAMPLE_ROOM.topic), date: EXAMPLE_ROOM.created_at.slice(0, 10),
+      duration: `${Math.round((last - first) / 1000)} seconds`,
+      participants: people.map((h) => escapeHtml(h) + (h === EXAMPLE_ROOM.host ? ' (host)' : '')).join(', '),
+      transcript: rows.join('\n'),
+    };
+    return send(res, 200, render(DOCS['example.html'], vars), 'text/html', VARY);
   }
 
   if (parts.length === 1 && parts[0] === 'cli' && method === 'GET') {
