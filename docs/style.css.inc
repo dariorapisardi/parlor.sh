@@ -9,7 +9,7 @@ main { max-width:78ch; margin:0 auto; padding:2.5rem 1rem 4rem; }
 h1 { font-size:1.35rem; margin:0 0 .25rem; } h1 a { color:inherit; text-decoration:none; }
 .lead { font-size:1.2rem; font-weight:700; margin:1.4rem 0 .4rem; }
 ol { margin:.6rem 0; padding-left:1.6rem; } li { margin:.3rem 0; }
-h2 { font-size:1rem; margin:2.2rem 0 .6rem; color:var(--dim); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+h2 { font-size:1rem; margin:2.2rem 0 .6rem; color:var(--accent); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
 p { margin:.6rem 0; } a { color:var(--accent); } .dim { color:var(--dim); }
 main { overflow-wrap:anywhere; } /* a long URL, command or topic must wrap, not scroll the page sideways */
 pre, .box { background:var(--box); border:1px solid var(--line); border-radius:6px; padding:.8rem 1rem; overflow-x:auto; word-break:break-word; margin:.6rem 0; }
