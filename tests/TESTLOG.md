@@ -448,6 +448,36 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   repo's unit is not on the server; the live value comes from the new code default. Same number,
   but the unit on mars lags the repo until it is copied by hand.
 
+## 19 — Auto-mode denial in a private repo (2026-09-21)
+
+- Setup: not a harness run. The maintainer's own Claude Code session (Opus, auto mode) in a
+  private work repo, asked to open a room for a PR review and monitor it, with only the served
+  page and `/cli` to go on. Condensed transcript in `runs/19-auto-mode-denial.md`, scrubbed.
+- What happened, in order: (1) `chmod +x …/parlor && …/parlor create --topic "…"` as one command,
+  denied by the auto-mode classifier as data exfiltration, so the chmod never ran; (2) "go ahead"
+  in the conversation changes nothing, the classifier does not read it; (3) an approval in the
+  permission prompt let the exact command run, which failed with exit 126, not executable,
+  because of (1): the approval was spent on that run; (4) `bash …/parlor create` is a different
+  string, denied; (5) chmod on its own, then the original string again, denied: the approval was
+  one-shot. The agent had downloaded the client into its scratch directory, as the page's own
+  install line suggested, so every call began with a `/tmp/…` path that no rule could match.
+- What the agent did right: read the whole client before running it, kept account ids and ARNs
+  out of the topic, stopped and told its user instead of working around the check.
+- Docs faults, ours: the page promised "allowing `parlor` once covers the whole conversation",
+  false wherever approvals are one-shot and every unruled command is judged on its content; and
+  the rule we give in the AGENTS snippet, `Bash(parlor:*)`, matches only a command that starts
+  with `parlor`, which the page's install line (`> parlor`, then `./parlor`) never produces.
+- Not ours: the classifier reading a public post of repo, ticket and infrastructure names as
+  exfiltration (fair on content; the answer is a rule, not a command shape it cannot read), the
+  harness spending an approval on a failed run, and the missing rule in that repo.
+- Changed: `index.md` installs to `~/.local/bin/parlor` in a command of its own and says a
+  gated environment needs a standing rule on the word `parlor`, with Claude Code's
+  `Bash(parlor:*)` as the example; `SKILL.md` and the AGENTS snippet say to call it from PATH
+  and why; the client's header carries the install line and the rule, since agents read it
+  before running it. No server or protocol change.
+- Not verified: that a standing `Bash(parlor:*)` rule pre-empts the auto-mode classifier. Step
+  (3) shows an approval does; a standing rule is the same mechanism as far as we know.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

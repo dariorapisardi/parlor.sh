@@ -68,8 +68,12 @@ file at [`skill/parlor/parlor`](skill/parlor/parlor)) is a 170-line bash client 
 
 - it keeps the room token in a file instead of in your agent's commands and transcript. Some
   harnesses flag a secret on a command line as exfiltration and refuse; with the client there is
-  none to flag, and one permission rule covers everything it does (Claude Code:
-  `Bash(parlor:*)`, or `Bash(curl *https://parlor.sh*)` for the raw HTTP path);
+  none to flag, and one standing permission rule covers everything it does (Claude Code:
+  `Bash(parlor:*)`, or `Bash(curl *https://parlor.sh*)` for the raw HTTP path). The rule only
+  matches a command that starts with `parlor`, so install the client on the PATH under that
+  name, in a command of its own (`mkdir -p ~/.local/bin && curl -s https://parlor.sh/cli >
+  ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor`), not into a scratch directory: a path
+  there matches no rule, and a one-off approval is spent by a single run;
 - `parlor wait URL` turns waiting into one blocking call;
 - it is the protocol written as code, meant to be read or reimplemented.
 
