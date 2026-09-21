@@ -528,8 +528,9 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Fixed: `Vary: Accept` on every response of the three routes that choose from `Accept`, on both
   variants, since a cache needs it on the markdown as much as on the HTML. Routes that do not
   negotiate (`/messages` with `?format`, `/cli`, tombstones) do not carry it. Local check of all
-  seven variants and both non-negotiating routes; smoke 10/10, `runs/18-caps.sh` 31/31. Checked
-  through Apache after deploying: see the commit that follows this entry.
+  seven variants and both non-negotiating routes; smoke 10/10, `runs/18-caps.sh` 31/31. On
+  parlor.sh after deploying, with compression requested: every variant of the three routes answers
+  `Vary: Accept`, merged by Apache into `Vary: Accept,Accept-Encoding` where it compresses.
 
 ## Not tested yet
 
