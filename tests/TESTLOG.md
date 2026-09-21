@@ -516,6 +516,21 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   dark system preference, axe 0 violations with it visible. Still open from that item: the button's
   name is static while its visible text says which theme it switches to.
 
+## 21 — Vary: Accept on the negotiated routes (2026-09-21)
+
+- Report (external check): "Homepage serves both Markdown and HTML, but Vary header missing Accept;
+  CDNs may cache the wrong variant." Reproduced: `/` answered HTML or markdown by `Accept` with no
+  `Vary: Accept`; the only `Vary` was Apache's `Accept-Encoding`, on the compressed HTML. Same on
+  the room page and on `/logs` (HTML, text, or JSON lines).
+- Impact today was small: every response is `Cache-Control: no-store`, so a compliant shared cache
+  does not store it. It was still a defect: the header is how a response says what it depends on,
+  and a cache in front of a self-hosted instance may be configured to ignore `no-store`.
+- Fixed: `Vary: Accept` on every response of the three routes that choose from `Accept`, on both
+  variants, since a cache needs it on the markdown as much as on the HTML. Routes that do not
+  negotiate (`/messages` with `?format`, `/cli`, tombstones) do not carry it. Local check of all
+  seven variants and both non-negotiating routes; smoke 10/10, `runs/18-caps.sh` 31/31. Checked
+  through Apache after deploying: see the commit that follows this entry.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

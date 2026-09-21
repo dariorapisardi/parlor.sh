@@ -347,6 +347,9 @@ const SECURITY = {
 // Same URL, same content, two representations: HTML for clients that ask for it, markdown otherwise.
 const wantsHtml = (req) => /text\/html/.test(req.headers.accept || '');
 const NOINDEX = { 'x-robots-tag': 'noindex, nofollow' }; // rooms are unlisted
+// On every response of a route that picks its representation from Accept, whichever one it
+// picked: a shared cache must not hand the HTML to an agent or the markdown to a browser.
+const VARY = { vary: 'Accept' };
 
 function formatText(room, msgs, cursor) {
   const lines = msgs.map((m) => {
@@ -413,8 +416,8 @@ async function handle(req, res) {
   if (parts.length === 0 && method === 'GET') {
     const vars = { base, ttl: humanDuration(CONFIG.ttl) };
     const md = render(DOCS['index.md'], vars);
-    if (wantsHtml(req)) return send(res, 200, render(DOCS['index.html'], { ...vars, markdown: escapeHtml(md) }), 'text/html');
-    return send(res, 200, md, 'text/markdown');
+    if (wantsHtml(req)) return send(res, 200, render(DOCS['index.html'], { ...vars, markdown: escapeHtml(md) }), 'text/html', VARY);
+    return send(res, 200, md, 'text/markdown', VARY);
   }
 
   if (parts.length === 1 && parts[0] === 'cli' && method === 'GET') {
@@ -481,24 +484,24 @@ async function handle(req, res) {
     if (!action && method === 'GET') {
       const vars = roomVars(room, base);
       const md = render(DOCS['room.md'], vars);
-      if (!wantsHtml(req)) return send(res, 200, md, 'text/markdown', NOINDEX);
+      if (!wantsHtml(req)) return send(res, 200, md, 'text/markdown', { ...NOINDEX, ...VARY });
       const escaped = Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, escapeHtml(v)]));
       const html = render(DOCS['room.html'], { ...escaped, topic: escapeHtml(room.topic || '(none given)'), markdown: escapeHtml(md) });
-      return send(res, 200, html, 'text/html', NOINDEX);
+      return send(res, 200, html, 'text/html', { ...NOINDEX, ...VARY });
     }
 
     if (action === 'logs' && method === 'GET') {
       const accept = req.headers.accept || '';
       const format = url.searchParams.get('format');
       if (format === 'jsonl' || (!format && /ndjson|jsonl|application\/json/.test(accept))) {
-        return send(res, 200, room.messages.map((m) => JSON.stringify(m)).join('\n') + '\n', 'application/x-ndjson', NOINDEX);
+        return send(res, 200, room.messages.map((m) => JSON.stringify(m)).join('\n') + '\n', 'application/x-ndjson', { ...NOINDEX, ...VARY });
       }
       const text = `# Log of room ${room.id} (${room.status})\n\n${formatText(room, room.messages, room.messages.length)}`;
       if (wantsHtml(req) && !format) {
         const page = `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><meta name="color-scheme" content="light dark"><title>parlor log ${room.id}</title><pre style="white-space:pre-wrap;font:14px/1.5 ui-monospace,monospace;max-width:90ch;margin:2rem auto;padding:0 1rem">${escapeHtml(text)}</pre>`;
-        return send(res, 200, page, 'text/html', NOINDEX);
+        return send(res, 200, page, 'text/html', { ...NOINDEX, ...VARY });
       }
-      return send(res, 200, text, 'text/plain', NOINDEX);
+      return send(res, 200, text, 'text/plain', { ...NOINDEX, ...VARY });
     }
 
     if (action === 'join' && method === 'POST') {
