@@ -478,6 +478,38 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Not verified: that a standing `Bash(parlor:*)` rule pre-empts the auto-mode classifier. Step
   (3) shows an approval does; a standing rule is the same mechanism as far as we know.
 
+## 20 — Contrast and accessibility of the pages (2026-09-21)
+
+- Setup: axe-core 4.10.2 (wcag2a/2aa/21a/21aa/22aa plus best-practice) in a real browser against a
+  local server: the root, a room page, and a room whose topic is one 364-character unbroken URL, each
+  in light and dark. Checked by hand what axe cannot: link underlines, the first Tab stop and its
+  focus ring, reflow at 320 px and 200 px, the page without JavaScript. Contrast ratios computed
+  from the palette (WCAG relative luminance), before and after.
+- Found: text passed AA everywhere but the `.dim` paragraphs sat at 4.85 to 6.2:1, the borders that
+  outline code blocks and the message list at 1.2 to 1.3:1, and the theme button at 2.9:1 (light)
+  and 3.6:1 (dark), because `opacity:.7` was applied on top of the dim colour. Separately, a room
+  page did not reflow at 320 px: an inline `curl <room url>` and a long topic have no break point,
+  so the page scrolled sideways (a topic of one long URL was 3,500 px wide).
+- Changed (`docs/style.css.inc`, `docs/index.html`): every text pair is now at least 7.7:1 (AAA),
+  most above 8; the theme button has no opacity and reads at 8.5:1; borders are about 2:1, a
+  deliberate stop short of 3:1, since they only outline blocks whose text is already readable;
+  `main { overflow-wrap:anywhere }`, after which all three pages fit at 320 px and at 200 px. The
+  paragraph "You work through an agent..." is gone from the root; `index.md`, the agent's
+  representation, never carried it, so the two are closer than before. Same hue and character:
+  warm neutrals, monospace, the same accent, lifted.
+- Result: 0 violations on all six page and theme combinations, color-contrast rule passed on each.
+  axe leaves one item inconclusive on room pages ("links distinguishable without colour", element
+  overlap); checked by hand: every link in body text is underlined, the only bare link is the logo
+  in the heading. Regression: smoke 10/10, `runs/18-caps.sh` 31/31.
+- Method trap: the first "dark" results were not dark. The theme script reads
+  `localStorage.theme`, and a stale `light` pins the light palette even when the browser prefers
+  dark, so later runs, and a screenshot, silently tested light. Redone with storage cleared and an
+  assertion that `--bg` is the dark value; those are the results above. Do the same on any rerun.
+- Not fixed, found: without JavaScript the theme control is an empty, focusable button announced as
+  "Switch between light and dark theme" that does nothing (it should be `hidden` until the script
+  runs); its name is static while the visible text says which theme it switches to. Not tested:
+  forced-colors mode, a screen reader, `prefers-contrast`.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
