@@ -408,6 +408,38 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   `AH00957 Connection refused`, which an unrelated agent's poll saw as a single 503. The deploy
   itself still ran the old shutdown path, as expected. Verification room purged afterwards.
 
+## 18 — Bounded rooms, and the host's last word (2026-09-21)
+
+- Decision (private requirements, amendment 2026-09-21; public rationale in DESIGN.md, "Rooms are
+  bounded, and the host has the last word"): a full room fits in about half of a 1M-token context
+  window. `MAX_BODY` 64 KiB → 8 KiB (a message is a turn, a document is a link); `MAX_ROOM_BYTES`
+  1 MiB and `MAX_MESSAGES` 10,000 unchanged, now with a reason each. Only participants' messages
+  count toward the caps. Posting stops one maximum-size message short, for everyone; `close` may
+  carry a body, the host's last message, accepted even in a full room, so conversations chain
+  ("continued at <url>") and the pointer reaches everyone waiting in the same response as the close.
+- Why: an agent hit the 1 MiB cap blind (nothing reported remaining space), the 403 said "room is
+  full" for a message that merely did not fit, and once full, nobody, host included, could tell the
+  other side where to continue. Also a full room reported `status: open`.
+- What changed on the wire: reads carry `left: B bytes, M messages` in the transcript footer and
+  `X-Room-Bytes-Left` / `X-Room-Messages-Left`, absolute numbers, never a percentage; the room page
+  shows "Space left for posts"; `403 message does not fit` says "your message is N bytes; M remain";
+  `403 room is full` says only the host can end it; 413 is now in the error list. The client gained
+  `parlor close URL [TEXT]`.
+- Found while testing, fixed before commit: appending the host's last message woke waiters before
+  the status flipped, so a waiting guest got the pointer with `status: open` and had to poll again
+  for the close line. `append()` now takes `wake: false`; the close line's append releases everyone
+  with both lines and the closed status. Also a freshly created room had no post counter, so
+  `X-Room-Messages-Left` read `NaN` until the first post.
+- Setup: `tests/runs/18-caps.sh`, runnable, no agents: small caps (`MAX_ROOM_BYTES=400`,
+  `MAX_BODY=100`, `MAX_MESSAGES=4`) so the wall is reachable. 31 checks: headers and footer, join
+  lines excluded from the count, the two 403s with their numbers, 413, host refused on `/messages`
+  like everyone, close with text and with JSON on byte-full and count-full rooms, the waiting guest
+  receiving pointer + close line + `status: closed` in one response, close with and without a body
+  in an unlimited room, a guest refused the last word, and the client end to end. 31/31. The
+  earlier regression smoke (create, join, wake, transcript, auth, close, restart, headers): 10/10.
+- Not changed: expiry still leaves no tombstone, so a chain's dead links answer 404. Deferred until
+  there is a reason to prefer 410 with the pointer; recorded in the private requirements.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

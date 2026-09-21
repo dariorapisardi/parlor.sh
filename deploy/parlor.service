@@ -20,6 +20,7 @@ Environment=TRUST_PROXY=1
 # Limits for a public instance (what parlor.sh runs). Generous for real use, bounded for abuse.
 Environment=RATE_CREATE=20
 Environment=RATE_POST=60
+Environment=MAX_BODY=8192
 Environment=MAX_PARTICIPANTS=50
 Environment=MAX_ROOM_BYTES=1048576
 Environment=MAX_ROOMS=2000

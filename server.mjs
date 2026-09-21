@@ -28,7 +28,7 @@ const CONFIG = {
   ttlMin: seconds(env.TTL_MIN, 60),
   sweepEvery: seconds(env.SWEEP_EVERY, 30),
   drainGraceMs: Number(env.DRAIN_GRACE_MS || 250), // after a shutdown signal, keep answering this long
-  maxBody: Number(env.MAX_BODY || 64 * 1024),
+  maxBody: Number(env.MAX_BODY || 8 * 1024), // a message is a turn, not a document: link anything bigger
   maxMessages: Number(env.MAX_MESSAGES || 10_000),
   maxParticipants: Number(env.MAX_PARTICIPANTS || 0),
   maxRooms: Number(env.MAX_ROOMS || 0), // live rooms in total (open or closed, not yet deleted)
@@ -121,7 +121,10 @@ function hydrate(id, { state, messages, tombstone }) {
   const status = state.status === 'expired' ? 'open' : state.status;
   const room = { ...state, ttl, status, messages, waiters: new Set(), dirty: legacy || status !== state.status };
   if (status === 'open') (delete room.delete_after, (room.ended_at = null));
-  room.bytes = messages.reduce((n, m) => n + Buffer.byteLength(m.body || ''), 0);
+  // Only what participants wrote counts toward the room's caps; join/leave lines do not.
+  const posts = messages.filter((m) => m.kind === 'message');
+  room.posts = posts.length;
+  room.bytes = posts.reduce((n, m) => n + Buffer.byteLength(m.body || ''), 0);
   return room;
 }
 
@@ -131,7 +134,7 @@ function hydrate(id, { state, messages, tombstone }) {
 const deleteAfter = (room) => room.delete_after || iso(Date.parse(room.last_activity) + room.ttl * 1000);
 
 function persist(room) {
-  const { messages, waiters, dirty, bytes, ...state } = room;
+  const { messages, waiters, dirty, bytes, posts, ...state } = room;
   store.saveState(room.id, state);
   room.dirty = false;
 }
@@ -170,11 +173,17 @@ function hasNews(room, sel) {
   return select(room, sel).some((m) => m.from !== sel.handle || m.kind === 'system');
 }
 
-function append(room, msg) {
+// `wake: false` appends without releasing anyone waiting: for a line that is immediately
+// followed by another, so both arrive in one response.
+function append(room, msg, { wake = true } = {}) {
   const full = { id: room.messages.length + 1, ts: iso(Date.now()), ...msg };
   room.messages.push(full);
-  room.bytes = (room.bytes || 0) + Buffer.byteLength(msg.body);
+  if (msg.kind === 'message') {
+    room.posts = (room.posts || 0) + 1;
+    room.bytes = (room.bytes || 0) + Buffer.byteLength(msg.body);
+  }
   store.append(room.id, full);
+  if (!wake) return full;
   for (const w of [...room.waiters]) {
     if (room.status !== 'open' || hasNews(room, w)) w.flush();
   }
@@ -182,6 +191,24 @@ function append(room, msg) {
 }
 
 const system = (room, body) => append(room, { kind: 'system', from: null, to: null, reply_to: null, body });
+
+// What /messages can still take, as absolute numbers a writer can compare with its own size.
+// One maximum-size message is always held back: the host's last word, which only /close writes.
+// null means the operator set no cap.
+function capacity(room) {
+  const bytes = CONFIG.maxRoomBytes ? Math.max(0, CONFIG.maxRoomBytes - CONFIG.maxBody - (room.bytes || 0)) : null;
+  const messages = CONFIG.maxMessages ? Math.max(0, CONFIG.maxMessages - 1 - (room.posts || 0)) : null;
+  return { bytes, messages };
+}
+const FULL_HINT = 'Only the host can end it, with a last message (POST /close with a body), usually pointing to a new room. Wait for that, or start a new room.';
+
+// The log is public, so a token in a message would hand out a seat in the room.
+function rejectTokens(room, body) {
+  const candidates = body.match(/[A-Za-z0-9_-]{32}/g) || [];
+  if (candidates.some((t) => room.participants.some((p) => p.token_hash === sha256(t)))) {
+    throw new HttpError(400, 'message contains a room token', 'Tokens are secrets and this log is public; never post them. Nothing was sent.');
+  }
+}
 
 function end(room, status, reason) {
   if (room.status !== 'open') return;
@@ -329,8 +356,20 @@ function formatText(room, msgs, cursor) {
     return `[#${m.id} ${m.ts.slice(11, 19)}] ${who}${dest}${re}: ${m.body.replace(/\n/g, '\n    ')}`;
   });
   const present = `${room.participants.filter((p) => !p.left).length}/${room.participants.length}`;
-  lines.push(`--- cursor: ${cursor} | status: ${room.status} | present: ${present}${msgs.length ? '' : ' | nothing new'}`);
+  lines.push(`--- cursor: ${cursor} | status: ${room.status} | present: ${present}${leftText(room)}${msgs.length ? '' : ' | nothing new'}`);
   return lines.join('\n') + '\n';
+}
+
+// ` | left: 831488 bytes, 9120 messages` while the room is open and a cap is set; else nothing.
+function leftText(room) {
+  if (room.status !== 'open') return '';
+  const { bytes, messages } = capacity(room);
+  const parts = [bytes !== null && `${bytes} bytes`, messages !== null && `${messages} messages`].filter(Boolean);
+  return parts.length ? ` | left: ${parts.join(', ')}` : '';
+}
+function leftHeaders(room) {
+  const { bytes, messages } = capacity(room);
+  return { ...(bytes !== null && { 'x-room-bytes-left': String(bytes) }), ...(messages !== null && { 'x-room-messages-left': String(messages) }) };
 }
 
 function roomVars(room, base) {
@@ -350,6 +389,9 @@ function roomVars(room, base) {
     ttl: humanDuration(room.ttl),
     max_body: CONFIG.maxBody,
     max_wait: CONFIG.maxWait,
+    max_room_bytes: CONFIG.maxRoomBytes || 'unlimited',
+    max_messages: CONFIG.maxMessages || 'unlimited',
+    left: leftText(room).replace(/^ \| left: /, '') || (room.status === 'open' ? 'unlimited' : 'none, the room has ended'),
   };
 }
 
@@ -403,6 +445,7 @@ async function handle(req, res) {
       participants: [],
       messages: [],
       bytes: 0,
+      posts: 0, // participants' messages; what the caps count
       waiters: new Set(),
       dirty: false,
     };
@@ -486,7 +529,7 @@ async function handle(req, res) {
       const respond = () => {
         const msgs = select(room, sel);
         const cursor = sel.forMe ? (msgs.at(-1)?.id ?? sel.since) : Math.max(sel.since, room.messages.length);
-        const meta = { 'x-room-cursor': String(cursor), 'x-room-status': room.status, ...NOINDEX };
+        const meta = { 'x-room-cursor': String(cursor), 'x-room-status': room.status, ...leftHeaders(room), ...NOINDEX };
         if (q.get('format') === 'text') return send(res, 200, formatText(room, msgs, cursor), 'text/plain', meta);
         return send(res, 200, { messages: msgs, cursor, status: room.status }, 'application/json', meta);
       };
@@ -512,22 +555,19 @@ async function handle(req, res) {
     if (action === 'messages' && method === 'POST') {
       const me = auth(room, req);
       if (room.status !== 'open') throw new HttpError(410, `room is ${room.status}`, 'No more posts. The log is still readable.');
-      if (CONFIG.maxMessages && room.messages.length >= CONFIG.maxMessages) {
-        throw new HttpError(403, 'room is full', `Limit is ${CONFIG.maxMessages} messages. Continue in a new room.`);
-      }
+      // Same rule for everyone, host included: a post must leave room for one more message.
+      const left = capacity(room);
+      if (left.messages === 0 || left.bytes === 0) throw new HttpError(403, 'room is full', FULL_HINT);
       rateLimit(`post ${room.id} ${me.handle}`, CONFIG.ratePost, 60, 'messages');
       const raw = await readBody(req);
       const f = parseFields(raw, req.headers['content-type'], url.searchParams);
       const body = (f._json && typeof f.body === 'string' ? f.body : f._json ? '' : raw).trimEnd();
       if (!body.trim()) throw new HttpError(400, 'empty message', 'Send the text as the request body, or JSON {"body": "..."}.');
-      if (CONFIG.maxRoomBytes && room.bytes + Buffer.byteLength(body) > CONFIG.maxRoomBytes) {
-        throw new HttpError(403, 'room is full', `Limit is ${CONFIG.maxRoomBytes} bytes of text per room. Continue in a new room.`);
+      const size = Buffer.byteLength(body);
+      if (left.bytes !== null && size > left.bytes) {
+        throw new HttpError(403, 'message does not fit', `Your message is ${size} bytes; ${left.bytes} remain. Shorten it, or post a link.`);
       }
-      // The log is public, so a token in a message would hand out a seat in the room.
-      const candidates = body.match(/[A-Za-z0-9_-]{32}/g) || [];
-      if (candidates.some((t) => room.participants.some((p) => p.token_hash === sha256(t)))) {
-        throw new HttpError(400, 'message contains a room token', 'Tokens are secrets and this log is public; never post them. Nothing was sent.');
-      }
+      rejectTokens(room, body);
       let to = null;
       if (f.to) {
         const target = byHandle(room, cleanHandle(f.to, ''));
@@ -556,6 +596,16 @@ async function handle(req, res) {
     if (action === 'close' && method === 'POST') {
       const me = auth(room, req);
       if (me.role !== 'host') throw new HttpError(403, 'only the host can close the room', 'You can POST /leave instead.');
+      // An optional last word, written even when the room is full: that space is held back for
+      // exactly this. Typically "continued at <url>", so everyone waiting learns where to go.
+      const raw = await readBody(req);
+      const f = parseFields(raw, req.headers['content-type'], url.searchParams);
+      const body = (f._json && typeof f.body === 'string' ? f.body : f._json ? '' : raw).trimEnd();
+      if (body.trim() && room.status === 'open') {
+        rejectTokens(room, body);
+        // Not waking anyone yet: the close line that follows releases every waiter with both.
+        append(room, { kind: 'message', from: me.handle, to: null, reply_to: null, body }, { wake: false });
+      }
       end(room, 'closed', `${me.handle} closed the room`);
       return send(res, 200, { ok: true, status: room.status });
     }

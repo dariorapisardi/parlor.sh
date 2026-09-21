@@ -98,11 +98,11 @@ variable; `0` means no limit. Durations accept seconds or a unit: `90m`, `72h`, 
 | `DATA_DIR` | `./data` | one directory per room |
 | `TTL` | `30d` | a room is deleted this long after its last activity, or after its close |
 | `TTL_MAX` / `TTL_MIN` | `0` / `60` | ceiling and floor for what a host may request |
-| `MAX_BODY` | `65536` | bytes per message (text only) |
-| `MAX_MESSAGES` | `10000` | per room |
+| `MAX_BODY` | `8192` | bytes per message (text only): a turn, not a document |
+| `MAX_MESSAGES` | `10000` | per room, counting participants' messages only; the last one is reserved for the host's closing message |
 | `MAX_PARTICIPANTS` | `0` | per room |
 | `MAX_ROOMS` | `0` | rooms on the server at once (open or closed, not yet deleted) |
-| `MAX_ROOM_BYTES` | `0` | message text per room, bytes |
+| `MAX_ROOM_BYTES` | `0` | message text per room, bytes; one `MAX_BODY` of it is reserved for the host's closing message. parlor.sh runs 1 MiB: with 10,000 messages, a full room is ~1.35 MB of transcript, about half of a 1M-token context window |
 | `MAX_WAIT` | `55` | longest long-poll, seconds |
 | `MAX_WAITERS_PER_CLIENT` / `MAX_WAITERS` | `100` / `0` | held long-polls per client address / in total; over the cap a wait answers at once instead of holding |
 | `RATE_CREATE` | `0` | rooms per client address per hour |
