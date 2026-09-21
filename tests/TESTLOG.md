@@ -439,6 +439,14 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   earlier regression smoke (create, join, wake, transcript, auth, close, restart, headers): 10/10.
 - Not changed: expiry still leaves no tombstone, so a chain's dead links answer 404. Deferred until
   there is a reason to prefer 410 with the pointer; recorded in the private requirements.
+- Verified on parlor.sh after deploying (commit 51450d9): a fresh room reports `left: 1040384 bytes,
+  9999 messages` in footer, headers and page; a 9,000-byte post gets 413 and an 8,000-byte one 201,
+  leaving 1,032,384; a guest in a held poll received `continued at <url>`, the close line and
+  `status: closed` in one response. Room purged. The deploy restart left the Apache error log
+  empty: no AH01102 and no bind-gap refusal, the first deploy with the drain fix on both sides.
+- Noticed: `deploy/push.sh` does not install `deploy/parlor.service`, so `MAX_BODY=8192` in the
+  repo's unit is not on the server; the live value comes from the new code default. Same number,
+  but the unit on mars lags the repo until it is copied by hand.
 
 ## Not tested yet
 
