@@ -623,6 +623,41 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Then: 54 of 54 locally; contract tier against https://parlor.sh 38 of 38, 11 rooms created and
   purged. CI (`.github/workflows/conformance.yml`) runs both tiers on Node 18 and 22 on every push.
 
+## 25 — The Gleam port, first pass (2026-09-23)
+
+Setup: `gleam/`, Gleam 1.18.1 on Erlang/OTP 29, mist 6 for HTTP. A room is a process (an actor
+that owns the room's state and log and holds its long-polls); a registry process maps ids to
+rooms, keeps the cross-room counts (rooms created per client, polls held) and restarts a crashed
+room from its files. Same environment variables, same files. Nothing deployed: Node stays in
+production.
+
+- Before any Gleam: a handoff tier for the suite (`--then B`). Server A writes rooms in every
+  state (open, closed with a last word, purged, a participant who left), B serves them from the
+  same DATA_DIR, then A again: logs byte-identical in both formats, old tokens still post as the
+  same handle, handles not handed out twice, ids consecutive. The existing suite only restarted
+  the same server; the cutover on mars, and its rollback, are exactly this.
+- And a second tool, `tests/conformance/compare.py`: both servers, the same ~200 requests
+  (malformed JSON, invalid UTF-8, chunked bodies, emoji handles, numbers where strings go,
+  `reply_to` of 0, abc, 1.5, bearer-header variants, dot segments, a room filled to its cap,
+  every call on a purged room), every response diffed after masking ids, tokens, times and ports.
+- Result: suite 55 of 55 (contract, limits, handoff Gleam -> Node -> Gleam, and Node -> Gleam ->
+  Node). compare.py found 7 differences on its first run, all fixed: dot segments in paths (Node
+  resolves `%2e%2e`), the HTML room page's topic, and one Node bug: `GET //` answered 500 (a bare
+  `//` parses as an empty host); now the front page, like mist. Then 197 requests, 0 differences.
+- Burst, locally, N long-polls held in one room then woken by one post:
+  Node 2,000: 0.19 s to answer all, 130 MB RSS; 10,000: 0.67 s, 276 MB.
+  Gleam, first build: 10,000 took 3.8 GB. Two causes. glisten sizes each connection's receive
+  buffer to the kernel's (128 KiB), and a process that blocks keeps its garbage uncollected. Fixed
+  by a garbage collection before a poll is held, and an 8 KiB kernel buffer on the listening
+  socket, which accepted sockets inherit. Now 2,000: 0.10 s, 177 MB; 10,000: 0.49 s, 381 MB (BEAM
+  heap 73 MB; the rest is allocator slack after the burst). mist also ignored a client's
+  `Connection: close`; it is now honoured.
+- CI: a `gleam` job runs the suite with the handoff tier and compare.py on every push.
+
+Still to do before the port can replace Node: restarts without refused connections (mist cannot
+take systemd's socket), a build that runs on mars (Debian 12 ships OTP 25; this needs 27+), the
+naive-agent gate against a Gleam instance, then the cutover itself.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

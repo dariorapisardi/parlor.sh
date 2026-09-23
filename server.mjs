@@ -412,7 +412,13 @@ async function handle(req, res) {
   // Links are printed with PUBLIC_URL when set; otherwise with the address the client used.
   const proto = (CONFIG.trustProxy && req.headers['x-forwarded-proto']) || 'http';
   const base = CONFIG.publicUrl || `${proto}://${req.headers.host}`;
-  const url = new URL(req.url, base);
+  // A path starting `//` names a host (`//x/y` is /y); a bare `//` has an empty one and throws.
+  let url;
+  try {
+    url = new URL(req.url, base);
+  } catch {
+    url = new URL('/', base);
+  }
   const parts = url.pathname.split('/').filter(Boolean);
   const method = req.method === 'HEAD' ? 'GET' : req.method;
 

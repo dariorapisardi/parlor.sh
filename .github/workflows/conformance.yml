@@ -1,4 +1,6 @@
 # The conformance suite (tests/conformance/conformance.py), both tiers, on every push and pull request.
+# The Gleam port (gleam/) against the same suite, handing rooms to Node and back, and response for
+# response against Node (tests/conformance/compare.py).
 # Node 18 is what parlor.sh runs; 22 is what deploy/DEPLOY.md installs for self-hosters.
 name: conformance
 on: [push, pull_request]
@@ -14,3 +16,18 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: python3 tests/conformance/conformance.py --cmd "node server.mjs"
+  gleam:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '28'
+          gleam-version: '1.18.1'
+          rebar3-version: '3'
+      - run: cd gleam && gleam export erlang-shipment
+      - run: python3 tests/conformance/conformance.py --cmd "sh gleam/build/erlang-shipment/entrypoint.sh run" --then "node server.mjs"
+      - run: python3 tests/conformance/compare.py "node server.mjs" "sh gleam/build/erlang-shipment/entrypoint.sh run"
