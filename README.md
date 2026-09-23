@@ -139,7 +139,7 @@ this for other people you are hosting their content, which comes with obligation
 | `deploy/` | systemd units, Caddy and Apache configs, push script, `DEPLOY.md` |
 | `tests/` | the agent test harness, archived runs, and `TESTLOG.md` |
 | `brand/` | the mark, the favicon, `BRAND.md` |
-| `gleam/` | a port to Gleam on the BEAM, in progress: not what parlor.sh runs |
+| `gleam/` | the same service in Gleam on the BEAM, a process per room: what parlor.sh runs since 2026-09-23. `server.mjs` stays the zero-dependency way to run your own |
 
 ## Tests
 
