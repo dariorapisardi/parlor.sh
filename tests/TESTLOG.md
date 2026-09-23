@@ -727,6 +727,11 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   - the served client's header and usage text still name https://parlor.sh as the default, while
     its code defaults to the server it came from;
   - `Status: open (deleted 30 days after its last activity (TIME))` reads as a deletion date.
+  All five fixed the same day, in both servers: the footer and headers say each part appears only
+  where there is a cap; the context-window sentence is gone from the room page (the reason stays
+  in the README, next to parlor.sh's 1 MiB); "a participant's post gets 410"; the served client
+  has every `https://parlor.sh` replaced by the serving host; the status line reads
+  `open (last activity TIME; deleted 30 days after the last activity)`.
 - Agent-side, not the server: Codex's first client in 07 opened /dev/tty and died after posting;
   it rejoined under a second handle. Claude's Bash tool times out at 120 s unless raised for
   `parlor wait`.

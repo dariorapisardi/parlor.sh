@@ -382,7 +382,7 @@ function roomVars(room, base) {
   const people = room.participants.map((p) => `${p.handle}${p.role === 'host' ? ' (host)' : ''}${p.left ? ' (left)' : ''}`).join(', ');
   const lifetime =
     room.status === 'open'
-      ? `deleted ${humanDuration(room.ttl)} after its last activity (${room.last_activity})`
+      ? `last activity ${room.last_activity}; deleted ${humanDuration(room.ttl)} after the last activity`
       : `closed at ${room.ended_at}; readable until ${deleteAfter(room)}`;
   return {
     id: room.id,
@@ -451,8 +451,8 @@ async function handle(req, res) {
   }
 
   if (parts.length === 1 && parts[0] === 'cli' && method === 'GET') {
-    // The copy served here talks to this server by default, wherever it is hosted.
-    const script = fs.readFileSync(CONFIG.cliPath, 'utf8').replace('${PARLOR_URL:-https://parlor.sh}', `\${PARLOR_URL:-${base}}`);
+    // The copy served here talks to this server by default, wherever it is hosted, and says so.
+    const script = fs.readFileSync(CONFIG.cliPath, 'utf8').replaceAll('https://parlor.sh', base);
     return send(res, 200, script, 'text/plain');
   }
 

@@ -395,17 +395,13 @@ fn example(web: Web, c: Ctx) -> Response(ResponseData) {
 }
 
 fn cli(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
-  // The copy served here talks to this server by default, wherever it is hosted.
+  // The copy served here talks to this server by default, wherever it is hosted, and says so.
   case simplifile.read(web.config.cli_path) {
     Ok(script) ->
       Ok(
         send(
           200,
-          replace_first(
-            script,
-            "${PARLOR_URL:-https://parlor.sh}",
-            "${PARLOR_URL:-" <> c.base <> "}",
-          ),
+          string.replace(script, "https://parlor.sh", c.base),
           "text/plain",
           [],
         ),
@@ -751,11 +747,11 @@ fn room_vars(
     |> string.join(", ")
   let lifetime = case s.status {
     "open" ->
-      "deleted "
-      <> config.human_duration(s.ttl)
-      <> " after its last activity ("
+      "last activity "
       <> s.last_activity
-      <> ")"
+      <> "; deleted "
+      <> config.human_duration(s.ttl)
+      <> " after the last activity"
     _ ->
       "closed at "
       <> option.unwrap(s.ended_at, "null")
