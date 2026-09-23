@@ -8,6 +8,7 @@ import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject, type Timer}
 import gleam/float
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
@@ -39,6 +40,9 @@ pub type Room {
 pub type Content {
   Open(Room)
   Gone(Tombstone)
+  /// A room whose files are still being read. Its first message is always the one that reads
+  /// them, so nothing outside the room ever sees this.
+  Unloaded(id: String)
 }
 
 /// What the web layer needs to answer a read: the selected messages and the room around them.
@@ -106,6 +110,8 @@ pub type Msg {
   )
   Purge(token: Option(String), reply: Subject(Result(Tombstone, HttpError)))
   Sweep
+  /// Read the room's files: the first message of a room started by `load`.
+  Load
   /// The server is going down: answer every held wait now, write what is unwritten.
   Drain
   Expire(ref: Int)
@@ -181,44 +187,44 @@ pub fn create(
   })
 }
 
-/// A room from the data directory. Rooms that ended by expiring (an older status) are open again.
+/// A room from the data directory. It starts at once and reads its files as its first message,
+/// so a server with many rooms is listening before they are all read; a request for a room still
+/// reading waits in that room's mailbox.
 pub fn load(
   deps: Deps,
   id: String,
 ) -> Result(#(Subject(Msg), process.Pid, Nil), actor.StartError) {
-  start(deps, fn() {
-    use loaded <- result.try(store.load(
-      deps.config.data_dir,
-      id,
-      deps.config.ttl,
-    ))
-    case loaded {
-      store.Purged(t) -> Ok(#(Gone(t), Nil))
-      store.Live(state, messages, legacy) -> {
-        let status = case state.status {
-          "expired" -> "open"
-          s -> s
-        }
-        let state = case status {
-          "open" ->
-            store.State(..state, status:, delete_after: None, ended_at: None)
-          _ -> store.State(..state, status:)
-        }
-        let posts = list.filter(messages, fn(m) { m.kind == "message" })
-        Ok(#(
-          Open(Room(
-            state:,
-            messages: list.reverse(messages),
-            count: list.length(messages),
-            posts: list.length(posts),
-            bytes: list.fold(posts, 0, fn(n, m) { n + string.byte_size(m.body) }),
-            dirty: legacy || status != state.status,
-          )),
-          Nil,
-        ))
+  start(deps, fn() { Ok(#(Unloaded(id), Nil)) })
+}
+
+// Rooms that ended by expiring (an older status) are open again.
+fn read_files(config: Config, id: String) -> Result(Content, String) {
+  use loaded <- result.try(store.load(config.data_dir, id, config.ttl))
+  case loaded {
+    store.Purged(t) -> Ok(Gone(t))
+    store.Live(state, messages, legacy) -> {
+      let status = case state.status {
+        "expired" -> "open"
+        s -> s
       }
+      let state = case status {
+        "open" ->
+          store.State(..state, status:, delete_after: None, ended_at: None)
+        _ -> store.State(..state, status:)
+      }
+      let posts = list.filter(messages, fn(m) { m.kind == "message" })
+      Ok(
+        Open(Room(
+          state:,
+          messages: list.reverse(messages),
+          count: list.length(messages),
+          posts: list.length(posts),
+          bytes: list.fold(posts, 0, fn(n, m) { n + string.byte_size(m.body) }),
+          dirty: legacy || status != state.status,
+        )),
+      )
     }
-  })
+  }
 }
 
 fn start(
@@ -227,6 +233,10 @@ fn start(
 ) -> Result(#(Subject(Msg), process.Pid, a), actor.StartError) {
   actor.new_with_initialiser(30_000, fn(self) {
     use #(content, extra) <- result.map(init())
+    case content {
+      Unloaded(_) -> process.send(self, Load)
+      _ -> Nil
+    }
     Actor(content:, waiters: [], next_ref: 0, windows: dict.new(), self:, deps:)
     |> actor.initialised
     |> actor.returning(#(self, extra))
@@ -242,8 +252,29 @@ fn start(
 // ---- messages ------------------------------------------------------------------------------
 
 fn handle(a: Actor, msg: Msg) -> actor.Next(Actor, Msg) {
+  case a.content, msg {
+    Unloaded(id), Load ->
+      case read_files(a.deps.config, id) {
+        Ok(content) -> {
+          // Reading a log leaves the file's text and its parsing behind as garbage, and an idle
+          // process is never collected: collect now, or every room keeps a load's worth.
+          collect_garbage()
+          actor.continue(Actor(..a, content:))
+        }
+        Error(reason) -> {
+          io.println_error("skipping unreadable room " <> id <> ": " <> reason)
+          actor.stop()
+        }
+      }
+    Unloaded(_), _ | _, Load -> actor.continue(a)
+    _, _ -> dispatch(a, msg)
+  }
+}
+
+fn dispatch(a: Actor, msg: Msg) -> actor.Next(Actor, Msg) {
   let config = a.deps.config
   case a.content, msg {
+    Unloaded(_), _ | _, Load -> actor.continue(a)
     content, View(with_messages, reply) -> {
       process.send(reply, case content, with_messages {
         Open(room), False -> Open(Room(..room, messages: []))
@@ -1129,6 +1160,7 @@ fn sweep(a: Actor, content: Content) -> actor.Next(Actor, Msg) {
       actor.stop()
     }
     False, Gone(_) -> actor.stop()
+    _, Unloaded(_) -> actor.continue(a)
     True, Gone(t) ->
       case expired(t.delete_after) {
         True -> {
@@ -1168,6 +1200,7 @@ fn room_id(content: Content) -> String {
   case content {
     Open(room) -> room.state.id
     Gone(t) -> t.id
+    Unloaded(id) -> id
   }
 }
 
@@ -1186,6 +1219,9 @@ fn guard(
     False -> next()
   }
 }
+
+@external(erlang, "parlor_ffi", "collect_garbage")
+fn collect_garbage() -> Nil
 
 @external(erlang, "parlor_ffi", "is_draining")
 pub fn is_draining() -> Bool

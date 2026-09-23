@@ -661,6 +661,31 @@ stops counting a held poll the moment its client disconnects; the port counts it
 runs out (at most MAX_WAIT), so an agent that drops and re-polls fast reaches
 MAX_WAITERS_PER_CLIENT sooner.
 
+## 26 — Gleam restarts behind Caddy's retry; rooms load in parallel (2026-09-23)
+
+mist cannot take over the socket systemd holds, so the port restarts the plain way (the port is
+closed for a moment) and Caddy bridges the gap: `lb_try_duration 10s`, `lb_try_interval 100ms` in
+deploy/Caddyfile. Caddy retries only connections that were refused, so no request is sent twice.
+Decided over patching glisten to accept an inherited socket: no parlor code, and Caddy is already
+in front.
+
+- Setup: Caddy 2.11.4 (mars's version) locally in front of the server, `tests/runs/23` (a stream
+  of fresh requests plus two agents re-polling at once) through a stop-and-start restart.
+- Gleam, no retry: 811 and 640 agent polls answered 502, about 100 stream requests 502.
+- Gleam, with retry, three runs: every request answered 200, none refused. The agents made ~360
+  polls in 7 s: the old process answers polls at once during its 250 ms drain and they re-poll at
+  once (Node did the same before the socket unit). DRAIN_GRACE_MS=50 cuts that to ~80, 10 to ~16.
+- Node without the socket unit, with retry: also all 200.
+- Startup was the gap Caddy has to cover. With 2,000 rooms (133 MB of logs), Gleam first took 3.8 s
+  to listen, reading every room one after another before starting. Now each room's process starts
+  empty and reads its own files as its first message: listening after 0.5 s (Node 0.7 s); a request
+  for a room still reading waits in that room's mailbox (the 1,500th room answered at 1.4 s). Rooms
+  also collect their garbage after reading, or each kept its file's text: RSS 397 MB against
+  Node's 261 MB for the same rooms.
+- Unreadable room: skipped with a message, answers 404, as on Node.
+- The Caddyfile change is live on parlor.sh; it changes nothing for Node, whose socket unit never
+  refuses.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

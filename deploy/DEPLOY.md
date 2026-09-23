@@ -45,7 +45,9 @@ curl -s https://YOUR_DOMAIN/ | head -5
   nothing is refused during it: `parlor.socket` keeps the port open while the process is replaced, so
   requests arriving meanwhile wait a moment and are answered by the new process. Waiting agents get one
   empty answer from the old process and their next poll is held by the new one. (Run without the socket
-  unit, parlor binds the port itself and a restart refuses connections for a moment.)
+  unit, parlor binds the port itself and a restart refuses connections for a moment; the Caddyfile's
+  `lb_try_duration` covers that gap by holding those requests and retrying until the new process
+  answers.)
 - **Logs:** `journalctl -u parlor -f`. The proxy's record of every request and status code is
   `/var/log/caddy/parlor-access.log` (JSON); Caddy's own messages are in `journalctl -u caddy`.
 - **A box with other sites:** keep the box's own `/etc/caddy/Caddyfile` and have it

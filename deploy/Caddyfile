@@ -12,6 +12,12 @@ parlor.sh {
 	reverse_proxy 127.0.0.1:8787 {
 		# Long-polls are held up to ~55 s; do not buffer or cut them short.
 		flush_interval -1
+		# While the backend restarts, hold new requests and retry the connection instead of
+		# answering 502. Only a request that never reached the backend is retried, so nothing
+		# is sent twice. The Node service does not need it (systemd holds its socket); the
+		# Gleam port does, as mist cannot take that socket over.
+		lb_try_duration 10s
+		lb_try_interval 100ms
 	}
 }
 

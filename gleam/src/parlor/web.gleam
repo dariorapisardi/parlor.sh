@@ -526,6 +526,7 @@ fn in_room(
       case content {
         room.Gone(t) -> tombstone_page(t)
         room.Open(r) -> room_page(web, c, r)
+        room.Unloaded(_) -> error_response(gone)
       }
     }
     Some("logs"), Get -> {
@@ -533,6 +534,7 @@ fn in_room(
       case content {
         room.Gone(t) -> tombstone_page(t)
         room.Open(r) -> logs(web.config, c, r)
+        room.Unloaded(_) -> error_response(gone)
       }
     }
     Some("join"), Post -> {
@@ -616,6 +618,7 @@ fn in_room(
       use content <- result.try(ask(subject, gone, 5000, room.View(False, _)))
       case content {
         room.Gone(t) -> Error(room.purged_error(t))
+        room.Unloaded(_) -> Error(gone)
         room.Open(r) ->
           Ok(
             send_json(
@@ -643,6 +646,7 @@ fn in_room(
       case content {
         room.Gone(t) -> Error(room.purged_error(t))
         room.Open(_) -> Error(not_found(c))
+        room.Unloaded(_) -> Error(gone)
       }
     }
   }
