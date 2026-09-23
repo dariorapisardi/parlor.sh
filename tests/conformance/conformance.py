@@ -10,6 +10,8 @@ Two tiers:
             content negotiation, long-poll semantics, close, purge. It creates 11 rooms (topic
             "[conformance] ...") and purges every one at the end. parlor.sh allows 20 per client
             per hour (RATE_CREATE), so against it, one run per hour.
+  handoff   (with --then) one implementation writes rooms, another serves them from the same data
+            directory, then the first again: rooms and tokens have to outlive a change of server.
   limits    starts its own servers with small limits (MAX_BODY=100, RATE_POST=2, a TTL of seconds,
             ...), so it needs the command that runs a server. It also covers what only an operator
             can do: restarts, persistence, shutdown. The environment variable names are part of the
@@ -20,6 +22,9 @@ usage:
   tests/conformance/conformance.py --cmd "node server.mjs"     both tiers; the command is started (from
                                                                the repo root) once per limits profile,
                                                                with PORT, HOST and DATA_DIR set
+  tests/conformance/conformance.py --cmd A --then B            also the handoff tier: rooms written by
+                                                               A, served by B from the same DATA_DIR,
+                                                               and back to A (the cutover, and its rollback)
   add -k WORD to run only the checks whose name contains WORD.
 
 Python 3 standard library only: the server has no dependencies, and neither does its test.
@@ -857,14 +862,70 @@ def shutdown_answers_held_polls(c):
     ok(box['r'].elapsed < 5, f'answered after {box["r"].elapsed:.2f} s')
 
 
+# ---- handoff: another implementation on the same data directory -----------------------------
+
+def snapshot(c, rid):
+    """What a reader sees of a room, minus what legitimately moves (activity times)."""
+    part = c.srv.get(f'/r/{rid}/participants')
+    return {
+        'jsonl': c.srv.get(f'/r/{rid}/logs?format=jsonl').text,
+        'text': c.srv.get(f'/r/{rid}/logs').text,
+        'participants': part.json() if part.status == 200 else part.status,
+        'page': c.srv.get(f'/r/{rid}').status,
+    }
+
+
+def same(before, after, what):
+    for k in before:
+        eq(after[k], before[k], f'{what}, {k}')
+
+
+@check('handoff', {})
+def handoff_there_and_back(c):
+    """Rooms and tokens written by one server work under the other, and back"""
+    # Every state a room can be in on the day of a cutover.
+    live = c.create({'handle': 'alice', 'topic': TOPIC + '\nsecond line <b>'})
+    bob = c.join(live['id'], 'bob')
+    c.say(live['id'], live['token'], 'hello @bob, ünïcödé and a\nsecond line')
+    c.say(live['id'], bob['token'], 'addressed', to='alice', reply_to=3)
+    c.srv.post(f'/r/{live["id"]}/leave', token=bob['token'])
+    shut = c.create()
+    c.say(shut['id'], shut['token'], 'before the close')
+    eq(c.srv.post(f'/r/{shut["id"]}/close', 'continued elsewhere', token=shut['token']).status, 200, 'close')
+    gone = c.create()
+    eq(c.srv.post(f'/r/{gone["id"]}/purge', token=gone['token']).status, 200, 'purge')
+    rooms = {'open': live['id'], 'closed': shut['id'], 'purged': gone['id']}
+    before = {k: snapshot(c, rid) for k, rid in rooms.items()}
+
+    for leg in ('there', 'back'):
+        c.runner.handoff()
+        for k, rid in rooms.items():
+            same(before[k], snapshot(c, rid), f'{leg}: {k} room')
+        is_error(c.srv.post(f'/r/{gone["id"]}/join', {'handle': 'x'}), 410, f'{leg}: join a purged room')
+        is_error(c.say(shut['id'], shut['token'], 'late'), 410, f'{leg}: post to a closed room')
+        is_error(c.say(live['id'], 'not-a-token-of-this-room-at-all-xx', 'x'), 401, f'{leg}: wrong token')
+        # Tokens issued by the other server still speak, as the same handle; bob comes back.
+        r = c.say(live['id'], bob['token'], f'bob, {leg}')
+        eq(r.status, 201, f'{leg}: a token from before the handoff')
+        is_error(c.srv.form(f'/r/{live["id"]}/join', {'handle': 'x'}, token=live['token']), 409, f'{leg}: host token recognised')
+        g = c.join(live['id'], 'bob')
+        ok(g['handle'] != 'bob', f'{leg}: handle "bob" handed out again after the handoff')
+        c.say(live['id'], g['token'], f'newcomer, {leg}')
+        msgs = c.read(live['id'], since=0).json()['messages']
+        eq([m['id'] for m in msgs], list(range(1, len(msgs) + 1)), f'{leg}: message ids')
+        eq([m['from'] for m in msgs if m['body'] == f'bob, {leg}'], ['bob'], f'{leg}: the returning token posts as')
+        before['open'] = snapshot(c, live['id'])
+        eq(before['open']['participants']['participants'][1], {'handle': 'bob', 'role': 'guest', 'left': False}, f'{leg}: bob is back')
+
+
 # --------------------------------------------------------------------------------------------
 # Running
 # --------------------------------------------------------------------------------------------
 class Runner:
     """Starts the server command with a profile's environment on a free port; restarts it on request."""
 
-    def __init__(self, cmd, env):
-        self.cmd, self.env, self.data = cmd, dict(env), tempfile.mkdtemp(prefix='parlor-conformance-')
+    def __init__(self, cmd, env, then=None):
+        self.cmd, self.then, self.env, self.data = cmd, then, dict(env), tempfile.mkdtemp(prefix='parlor-conformance-')
         with socket.socket() as s:
             s.bind(('127.0.0.1', 0))
             self.port = s.getsockname()[1]
@@ -894,6 +955,12 @@ class Runner:
 
     def restart(self):
         self.stop()
+        self.start()
+
+    def handoff(self):
+        """Stop this server and start the other implementation on the same port and data."""
+        self.stop()
+        self.cmd, self.then = self.then, self.cmd
         self.start()
 
 
@@ -927,6 +994,7 @@ def main():
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument('--url', help='a running server: contract tier only')
     g.add_argument('--cmd', help='the command that starts a server: both tiers')
+    ap.add_argument('--then', help='with --cmd: another implementation, for the handoff tier')
     ap.add_argument('-k', default='', help='only checks whose name or docstring contains this')
     a = ap.parse_args()
     pick = lambda tier: [x for x in CHECKS if x[0] == tier and (a.k in x[2].__name__ or a.k in (x[2].__doc__ or ''))]
@@ -943,7 +1011,7 @@ def main():
                 for r in runners.values():
                     r.stop()
                 runners.clear()
-                runners[env] = Runner(a.cmd, dict(env))
+                runners[env] = Runner(a.cmd, dict(env), a.then)
             r = runners[env]
             return Server(f'http://127.0.0.1:{r.port}'), r
         try:
@@ -953,6 +1021,13 @@ def main():
             print(f'limits tier against `{a.cmd}`')
             chosen = pick('limits'); total += len(chosen)
             fails += run(chosen, srv_for, 'limits')
+            if a.then:
+                print(f'handoff tier: `{a.cmd}` -> `{a.then}` -> back')
+                for r in runners.values():
+                    r.stop()
+                runners.clear()  # a fresh data directory, started with --cmd
+                chosen = pick('handoff'); total += len(chosen)
+                fails += run(chosen, srv_for, 'handoff')
         finally:
             for r in runners.values():
                 r.stop()

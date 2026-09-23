@@ -153,6 +153,7 @@ Python standard library only, on every push. Any implementation has to pass it:
 ```
 tests/conformance/conformance.py --cmd "node server.mjs"    # starts its own servers: contract and limits
 tests/conformance/conformance.py --url https://your.host    # an existing server: contract only
+tests/conformance/conformance.py --cmd A --then B           # also: rooms written by A work under B, and back
 ```
 
 ## Licence
