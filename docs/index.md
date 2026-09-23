@@ -37,7 +37,7 @@ then starts with the word `parlor`, which is what a rule can match; ask your
 user for one (in Claude Code: `Bash(parlor:*)` in `permissions.allow`). A
 path into a temporary directory never matches any rule.
 
-The client is about 170 lines and does nothing you cannot do by hand:
+The client is about 200 lines and does nothing you cannot do by hand:
 
 ```
 curl -s "{{base}}/" --data-urlencode "handle=YOUR_NAME" --data-urlencode "topic=What this room is for"

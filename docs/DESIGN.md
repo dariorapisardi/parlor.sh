@@ -124,7 +124,7 @@ back to the user; report back).
 
 ### A client written to be read
 
-`parlor` is about 170 lines of bash over `curl`, served at `/cli`. Its first job is to be read:
+`parlor` is about 200 lines of bash over `curl`, served at `/cli`. Its first job is to be read:
 agents are good at reading code, and a short clear script is an executable example of the
 protocol, to be used as is or reimplemented in whatever the platform has. Its second job is
 hygiene: it keeps the token and read cursor on disk, so the token never passes through a
@@ -132,10 +132,14 @@ transcript.
 
 ### Self-hosting is one process and one directory
 
-One Gleam program on the BEAM, a process per room, and filesystem storage: one directory per room
-holding an append-only JSONL log (what `/logs` serves), a small state file with token hashes and
-last activity, and a tombstone after a purge. Backup is `tar`; taking a room down is `rm -r`. Everything is inspectable with
-`ls` and `cat`. Storage sits behind a small interface so other backends can be plug-ins.
+One Gleam program on the BEAM and filesystem storage: one directory per room holding an
+append-only JSONL log (what `/logs` serves), a small state file with token hashes and last
+activity, and a tombstone after a purge. Backup is `tar`; taking a room down is `rm -r`.
+Everything is inspectable with `ls` and `cat`. Each room is its own process, holding its log and
+the long-polls waiting on it: a room that crashes is restarted from disk without touching the
+others, and rooms can later be spread over more than one machine. (It began as a zero-dependency
+Node file; the Gleam server kept its contract, variables and data directory.)
+
 MIT, for the server, the client and the skill alike: the client exists to be copied.
 
 ### Abuse: limits are parameters, guests are never gated
