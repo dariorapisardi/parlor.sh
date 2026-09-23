@@ -112,7 +112,8 @@ variable; `0` means no limit. Durations accept seconds or a unit: `90m`, `72h`, 
 | `RATE_CREATE` | `0` | rooms per client address per hour |
 | `RATE_POST` | `0` | messages per participant per minute |
 | `TRUST_PROXY` | unset | `1` = take the client address and scheme from `X-Forwarded-*` (rightmost hop: one trusted proxy) |
-| `DRAIN_GRACE_MS` | `250` | on SIGINT/SIGTERM, how long to keep answering before exiting. Held polls are drained at once; during the grace a poll is answered immediately instead of held, so the re-poll a client sends straight after its drained one is not left unanswered |
+| `SWEEP_EVERY` | `30` | seconds between sweeps that delete expired rooms and notice rooms removed from `DATA_DIR` |
+| `DRAIN_GRACE_MS` | `250` | on SIGINT/SIGTERM, how long to finish before exiting. Held polls are answered at once. Under a systemd socket (`deploy/parlor.socket`) the process stops accepting, so new requests wait for the next process; binding the port itself, it keeps answering during the grace, a poll immediately instead of held |
 
 Data on disk, one directory per room:
 
