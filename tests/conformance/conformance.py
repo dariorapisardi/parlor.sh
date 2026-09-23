@@ -838,6 +838,14 @@ def ttl_activity_keeps(c):
     eq(c.srv.get(f'/r/{room["id"]}').status, 200, 'room after 4 s of authenticated reads')
 
 
+@check('limits', TTL)
+def ttl_wording(c):
+    """The room page states its TTL in words, singular when it is one"""
+    for ttl, words in (('1', '1 second'), ('60', '1 minute'), ('120', '2 minutes'), ('3600', '1 hour'), ('2d', '2 days')):
+        page = c.srv.get(f'/r/{c.create({"ttl": ttl})["id"]}').text
+        ok(f'{words} after its last activity' in page, f'ttl={ttl}: the page does not say "{words} after its last activity"')
+
+
 @check('limits', {})
 def survives_restart(c):
     """Rooms, messages and tokens survive a restart"""

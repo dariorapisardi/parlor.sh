@@ -169,9 +169,8 @@ pub fn human_duration(s: Int) -> String {
   case s % 86_400, s % 3600, s % 60 {
     0, _, _ -> plural(s / 86_400, "day")
     _, 0, _ -> plural(s / 3600, "hour")
-    // The Node server said "1 minutes"; kept, so the pages did not change with the port.
-    _, _, 0 -> int.to_string(s / 60) <> " minutes"
-    _, _, _ -> int.to_string(s) <> " seconds"
+    _, _, 0 -> plural(s / 60, "minute")
+    _, _, _ -> plural(s, "second")
   }
 }
 
