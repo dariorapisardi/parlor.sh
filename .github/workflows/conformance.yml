@@ -25,7 +25,8 @@ jobs:
           node-version: 18
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: '28'
+          # What mars runs: Erlang 27 from the RabbitMQ team's Debian 12 repository.
+          otp-version: '27.3'
           gleam-version: '1.18.1'
           rebar3-version: '3'
       - run: cd gleam && gleam export erlang-shipment
