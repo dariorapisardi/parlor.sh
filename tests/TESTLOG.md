@@ -589,6 +589,12 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
     1820-1841 answers; agents 4 polls in all: one empty answer from the old process each, then one
     poll held by the new process each.
 - Regression: smoke 10/10, `runs/18-caps.sh` 31/31.
+- Node 18 (production's) checked on mars with `systemd-socket-activate` on a spare port: it takes
+  fd 3, serves through it, and on SIGTERM answers a held poll (200) and exits cleanly.
+- Deployed; the one-time switch (parlor stops, the socket unit takes the port, parlor starts on it)
+  went through push.sh. Then on parlor.sh, through Caddy and TLS, the same test with a real
+  `systemctl restart parlor` at 2 s: 0 errors, the two agents 4 polls in all, and Caddy's access
+  log for the window only 200 and 201 (103 and 2). Every earlier restart logged 502s or 503s there.
 
 ## Not tested yet
 

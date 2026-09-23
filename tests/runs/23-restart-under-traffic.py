@@ -30,4 +30,5 @@ time.sleep(2); t0 = time.time()
 subprocess.run(restart, shell=True, check=True)
 restart_ms = int((time.time() - t0) * 1000)
 [t.join() for t in ts]
+post(f'/r/{rid}/purge', '', toks[0])   # leave nothing behind, production included
 print(f'{restart}: restart took {restart_ms} ms; ' + ', '.join(f'{k}: {v}' for k, v in sorted(res.items())))
