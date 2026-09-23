@@ -17,7 +17,8 @@ run="$(gh run list --commit "$commit" --workflow conformance --json databaseId,c
 build="$(mktemp -d)"; trap 'rm -rf "$build"' EXIT
 gh run download "$run" -n parlor-gleam-otp27 -D "$build/gleam/erlang-shipment"
 
-rsync -az --delete \
+# --delete-excluded: a file dropped from the release (server.mjs, once) leaves the server too.
+rsync -az --delete --delete-excluded --filter='P /gleam/***' \
   --include='/docs/***' --include='/skill/***' --include='/LICENSE' --include='/brand/***' --include='/README.md' \
   --include='/deploy/' --include='/deploy/parlor-gleam.service' \
   --include='/deploy/Caddyfile' --exclude='*' "$here/" "$target:/tmp/parlor-release/"

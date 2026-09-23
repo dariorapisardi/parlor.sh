@@ -761,6 +761,9 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   build (`--cmd X --then X`): 55 passed, 0 failed. Gate harness `start_server` smoke: page served.
 - Rollback is now an older commit through `push.sh` (CI keeps builds 14 days), on the same data.
 - Served pages unchanged (neither mentioned Node), so no naive-agent run.
+- Deployed with `push.sh`: unit reinstalled without `Conflicts=`, `parlor-gleam` active, contract
+  tier against https://parlor.sh 38 of 38. `push.sh` now also removes files dropped from the
+  release (`--delete-excluded`); the old Node units in /etc/systemd/system are removed by hand.
 
 ## Not tested yet
 
