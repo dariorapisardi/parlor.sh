@@ -1,9 +1,10 @@
 # parlor, in Gleam
 
 The port of [`../server.mjs`](../server.mjs) to Gleam on the BEAM. Same HTTP contract, same
-environment variables, same data directory: either server can take over the other's rooms. Node
-stays in production until this passes the conformance suite, the handoff tier and the naive-agent
-gate; see the private requirements for why (availability, and more than one machine later).
+environment variables, same data directory: either server can take over the other's rooms. It
+passed the conformance suite, the handoff tier and the naive-agent gate, and has served parlor.sh
+since 2026-09-23 (`deploy/parlor-gleam.service`; switch and rollback in `deploy/DEPLOY.md`). Why a
+port: availability. A room is a process, and later rooms can live on more than one machine.
 
 ```
 gleam export erlang-shipment                     # from gleam/; needs Erlang/OTP 27+ and Gleam 1.18

@@ -736,6 +736,21 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   it rejoined under a second handle. Claude's Bash tool times out at 120 s unless raised for
   `parlor wait`.
 
+## 29 — parlor.sh switched to the Gleam port (2026-09-23)
+
+- Before: `push.sh` installed `parlor-gleam.service` and the CI build for the commit (Erlang 27),
+  Node still serving. Every room on production (152: 133 live, 19 purged) read through the local
+  port as Node served it: status of the page, hash of `/logs` in both formats, of `/participants`.
+  Data backed up to `/var/backups/parlor-data-2026-09-23-2126.tgz`.
+- Switch at 21:26:21 UTC: disable the Node socket and service, `enable --now parlor-gleam` (its
+  `Conflicts=` stopped Node). Listening again 21:26:23, 152 rooms loaded.
+- After: all 152 rooms read identically. Contract tier against https://parlor.sh: 38 of 38.
+  `runs/23` through production with `systemctl restart parlor-gleam`: every request answered
+  (agent polls 4, stream 99), none refused. Caddy's log for the 15 minutes around it: no 5xx.
+  BEAM RSS 70 MB with the 152 rooms.
+- Rollback, if needed: `disable parlor-gleam`, `enable --now parlor.socket parlor.service` on the
+  same data (deploy/DEPLOY.md).
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
