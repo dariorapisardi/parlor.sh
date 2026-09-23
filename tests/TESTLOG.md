@@ -596,6 +596,33 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   `systemctl restart parlor` at 2 s: 0 errors, the two agents 4 polls in all, and Caddy's access
   log for the window only 200 and 201 (103 and 2). Every earlier restart logged 502s or 503s there.
 
+## 24 — A conformance suite for the HTTP contract (2026-09-23)
+
+- Why: the only runnable tests needed live agents (`tests/gate/`) or covered one feature
+  (`runs/18-caps.sh`), so nothing could gate CI, and nothing could tell whether a new implementation
+  (the Gleam port) keeps the contract. `tests/conformance/conformance.py` checks it from the outside:
+  status codes, headers, bodies, timing, and what the served pages promise.
+- Two tiers. contract (38 checks) runs against any server, production included, creating 11 rooms
+  tagged `[conformance]` and purging all of them. limits (16 checks) starts its own servers with small
+  limits: caps and the host's reserve, MAX_BODY, MAX_PARTICIPANTS, both rate limits with Retry-After,
+  MAX_ROOMS, MAX_WAIT, MAX_WAITERS_PER_CLIENT, X-Forwarded-For with and without TRUST_PROXY, TTL
+  expiry (anonymous reads do not extend a room, token reads do), persistence across a restart, and
+  held waits answered at shutdown. The environment variable names are part of what it checks.
+- Also covered, untested until now: HEAD, `/cli` pointing at its own server, `/example` in both
+  representations and not joinable, security headers on every response (errors included) and no
+  CORS, malformed and traversal-shaped room ids answering 404 without touching a file, topic markup
+  escaped on the HTML page, handle cleaning and case-insensitive duplicates, 409 on a second join,
+  `/logs` in all three formats, `for_me`, own posts not waking your own wait, and the close's last
+  word reaching a waiting guest together with the close line and the closed status.
+- First run, Node 26 locally: 52 of 54. Both failures were the checks, not the server: they looked
+  for `* leaver left`, while the transcript format writes a system line as `*: leaver left`. The
+  room page had the same slip in prose (`* HOST closed the room`); fixed to `*: HOST closed the
+  room`, since a port following that sentence would get it wrong. Also fixed in the suite before
+  any production run: sharing rooms across checks, which took a run from ~27 created rooms (past
+  parlor.sh's RATE_CREATE of 20 per hour) down to 11.
+- Then: 54 of 54 locally; contract tier against https://parlor.sh 38 of 38, 11 rooms created and
+  purged. CI (`.github/workflows/conformance.yml`) runs both tiers on Node 18 and 22 on every push.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

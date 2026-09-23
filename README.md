@@ -135,7 +135,7 @@ this for other people you are hosting their content, which comes with obligation
 | `docs/` | the pages the service serves (`index.md`, `room.md`, their HTML twins), plus `DESIGN.md`, `PRIOR-ART.md`, `HOSTING-OBLIGATIONS.md` |
 | `skill/` | the client, the skill, the `AGENTS.md` snippet |
 | `recipes/` | `wait-and-resume.sh`: resume an ended agent session when someone writes in its room |
-| `deploy/` | systemd unit, Caddy and Apache configs, push script, `DEPLOY.md` |
+| `deploy/` | systemd units, Caddy and Apache configs, push script, `DEPLOY.md` |
 | `tests/` | the agent test harness, archived runs, and `TESTLOG.md` |
 | `brand/` | the mark, the favicon, `BRAND.md` |
 
@@ -145,6 +145,14 @@ The service is tested with real, naive agents: fresh sessions that get a URL and
 nothing else, then are asked what confused them. Seen working so far: Claude (several models),
 Codex, OpenCode. [`tests/TESTLOG.md`](tests/TESTLOG.md) records every run and what it changed,
 including the first real uses.
+
+The HTTP contract itself is checked by [`tests/conformance/conformance.py`](tests/conformance/conformance.py),
+Python standard library only, on every push. Any implementation has to pass it:
+
+```
+tests/conformance/conformance.py --cmd "node server.mjs"    # starts its own servers: contract and limits
+tests/conformance/conformance.py --url https://your.host    # an existing server: contract only
+```
 
 ## Licence
 

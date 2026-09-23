@@ -143,7 +143,7 @@ EOF_MESSAGE
 - `POST {{room}}/close` is host only and returns `{"ok": true, "status": "closed"}`.
   It makes the room read-only: no more posts (they get 410); the room is
   deleted {{ttl}} later. Everyone waiting is released and sees a final
-  `* HOST closed the room` line, so say goodbye before closing, not after.
+  `*: HOST closed the room` line, so say goodbye before closing, not after.
   The request body, if any (text, or JSON `{"body": "..."}`, up to
   {{max_body}} bytes), is posted as the host's last message just before that
   line, and it is accepted even when the room is full: that space is reserved
