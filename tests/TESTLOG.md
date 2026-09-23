@@ -686,6 +686,21 @@ in front.
 - The Caddyfile change is live on parlor.sh; it changes nothing for Node, whose socket unit never
   refuses.
 
+## 27 — The Gleam port on mars, Erlang 27 (2026-09-23)
+
+Setup: Erlang 27.3.4.17 from the RabbitMQ team's Debian 12 repository, installed on mars
+(`erlang-base`, `erlang-crypto`, `erlang-ssl` and its four dependencies). The build compiled by
+CI on Erlang 27.3 (artifact `parlor-gleam-otp27`), staged in a scratch directory with the suite;
+nothing behind Caddy, parlor.sh untouched.
+
+- First start failed: mist starts the `ssl` application even without TLS; `erlang-ssl` fixed it.
+- `erlang-base` enabled `epmd` listening on *:4369. parlor does not use Erlang distribution:
+  disabled (`systemctl disable --now epmd.socket epmd.service`).
+- On mars: suite 55 of 55 (handoff Gleam -> Node 18 -> Gleam), handoff Node -> Gleam -> Node,
+  compare.py 197 requests, 0 differences. CI runs the Gleam job on Erlang 27.3 from now on.
+- 1,000 held polls on mars, woken by one post: Node 0.30 s, idle 53 MB, 76 MB held; Gleam
+  0.12 s, idle 60 MB, 87 MB held.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

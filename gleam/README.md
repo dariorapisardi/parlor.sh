@@ -10,6 +10,13 @@ gleam export erlang-shipment                     # from gleam/; needs Erlang/OTP
 sh gleam/build/erlang-shipment/entrypoint.sh run # from the repository root, which it serves docs/ from
 ```
 
+On Debian 12 (what parlor.sh runs on), Erlang 27 comes from the RabbitMQ team's repository
+(`deb1.rabbitmq.com/rabbitmq-erlang/debian/bookworm`): `apt-get install --no-install-recommends
+erlang-base erlang-crypto erlang-ssl` (mist starts `ssl` even without TLS). `erlang-base` enables
+`epmd`, which listens on every interface; parlor does not use it: `systemctl disable --now
+epmd.socket epmd.service`. The build has to be compiled on Erlang 27 too: CI keeps one as the
+`parlor-gleam-otp27` artifact.
+
 `PARLOR_ROOT` points it at another checkout (default: the working directory). Everything else is
 the table in the top-level README.
 
