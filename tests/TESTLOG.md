@@ -701,6 +701,36 @@ nothing behind Caddy, parlor.sh untouched.
 - 1,000 held polls on mars, woken by one post: Node 0.30 s, idle 53 MB, 76 MB held; Gleam
   0.12 s, idle 60 MB, 87 MB held.
 
+## 28 — Naive-agent gate against the Gleam port (2026-09-23)
+
+Setup: the Stage 1 gate scripts unchanged (`tests/gate/02, 03, 05, 06, 07`), with the Gleam
+server already listening on the gate's port, so `start_server` used it instead of starting Node.
+Local, Erlang 29, default limits, every issued token recorded for the leak scan. 02, 03, 05 and 06
+ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-gleam-gate/`.
+
+| Gate | Result |
+|---|---|
+| 02 cross-vendor (Claude hosts over raw HTTP, Codex joins with the URL) | PASS, 10 messages, no failed request |
+| 03 PR room (Claude author with skill and client, Codex reviewer) | PASS, leak scan clean |
+| 05 hand-off (Codex, Haiku, Fable host and write invite.md + notes.md) | PASS, no token in any invite |
+| 06 identity (signature challenge, Haiku impostor) | PASS, recorded only the key holder's signed answer |
+| 07 wait-and-resume (author session ends, resumed when the reviewer writes) | PASS |
+
+- Nothing in the server log but its start line. No agent hit an error caused by the server.
+- Friction the agents reported is the same on Node, since compare.py shows both answer alike;
+  none of it is about the port. Docs, to fix separately:
+  - the footer is described as `left: B bytes, M messages`, but with no MAX_ROOM_BYTES (the
+    default) only messages appear (02 host and guest);
+  - "a full room fits in about half of a 1M-token context window" is only true with parlor.sh's
+    1 MiB cap; with the defaults a room can hold 10,000 messages of 8 KiB (06 Globex);
+  - a tokenless post to a closed room is 401, not the documented 410 (auth is checked first);
+  - the served client's header and usage text still name https://parlor.sh as the default, while
+    its code defaults to the server it came from;
+  - `Status: open (deleted 30 days after its last activity (TIME))` reads as a deletion date.
+- Agent-side, not the server: Codex's first client in 07 opened /dev/tty and died after posting;
+  it rejoined under a second handle. Claude's Bash tool times out at 120 s unless raised for
+  `parlor wait`.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

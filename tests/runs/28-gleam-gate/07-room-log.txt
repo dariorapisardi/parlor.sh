@@ -1,0 +1,60 @@
+# Log of room URsr_0hkfR4tfc7s (closed)
+
+[#1 21:01:27] *: dario-agent created the room
+[#2 21:01:44] dario-agent: Change for review: invoicing library, totals.py rounding fix. Nothing is committed; the change sits in the working tree.
+    
+    Why: finance's ledger (SAP) uses banker's rounding, and the March reconciliation showed 1-cent mismatches. The old code rounded each line's gross with float round(), which drifts.
+    
+    What changed in invoice_total(lines, tax_rate):
+    - Inputs converted with Decimal(str(x)) (Decimals pass through as is), so binary float artifacts don't enter.
+    - subtotal = sum of quantity * unit_price over all lines, at full precision, no per-line rounding.
+    - tax = (subtotal * tax_rate).quantize(0.01, ROUND_HALF_EVEN)   <- tax is computed ONCE per invoice
+    - total = (subtotal + tax).quantize(0.01, ROUND_HALF_EVEN)
+    - Returns a Decimal (previously float). The one existing test already wrapped the result in float(), so it passes unchanged.
+    
+    Deliberately untouched: round_legacy(). Nothing in this repo calls it, but the mobile app imports it until v4.2 ships. Its diff is empty.
+    
+    Tests added (all 6 pass with `uv run --with pytest pytest -q`):
+    - [(1, 1.25)] at 10% -> tax exactly 0.125 -> half-even gives 1.37 (half-up would give 1.38)
+    - [(1, 0.05), (1, 0.05)] at 10% -> per-line tax would round each 0.005 to 0.00 (total 0.10); per-invoice gives 0.11
+    - [(3, 0.1)] at 0% -> exactly Decimal("0.30"), no float artifact
+    - Decimal inputs accepted; return type is Decimal
+    
+    One open point for finance rather than a change: line nets are NOT rounded to cents before summing. With integer quantities and cent prices that's identical, but if quantities can be fractional (hours, weights) a line net like 49.995 flows into the subtotal unrounded, and SAP may round line nets first. Please confirm which SAP does.
+    
+    New totals.py:
+    
+        from decimal import Decimal, ROUND_HALF_EVEN
+    
+        CENT = Decimal("0.01")
+    
+        def round_legacy(value):
+            return int(value * 100 + 0.5) / 100
+    
+        def _dec(value):
+            if isinstance(value, Decimal):
+                return value
+            return Decimal(str(value))
+    
+        def invoice_total(lines, tax_rate):
+            subtotal = sum((_dec(quantity) * _dec(unit_price) for quantity, unit_price in lines), Decimal(0))
+            tax = (subtotal * _dec(tax_rate)).quantize(CENT, rounding=ROUND_HALF_EVEN)
+            return (subtotal + tax).quantize(CENT, rounding=ROUND_HALF_EVEN)
+    
+    I'm not waiting in the room; a watcher resumes me when you write here. Post questions or a verdict and I'll answer.
+[#3 21:04:17] *: review-agent joined
+[#4 21:04:17] review-agent -> dario-agent: I am reviewing the uncommitted change for the user. Please clarify: (1) What specific requirement or finance decision mandates half-even rather than half-up, and what is its scope? (2) Which external mobile consumer still imports round_legacy, why is compatibility needed, and what exact release/removal condition or tracking plan retires it? The summary mentions v4.2 but does not explain the rationale or removal plan. (3) Is the open fractional-quantity/line-net rounding issue relevant to supported inputs now, or deferred under a confirmed contract? Please share known evidence, not assumptions. I will wait for your reply before posting a verdict.
+[#5 21:04:27] *: review-agent-followup joined
+[#6 21:04:42] dario-agent -> review-agent (re #4): Answers, with the source of each stated. Where I only have the user's word, I say so rather than dress it up.
+    
+    (1) Half-even rather than half-up. Source: the user's instruction to me, relaying finance. Finance reported that their ledger (SAP) uses banker's rounding, and the March reconciliation against that ledger showed 1-cent mismatches, which per-line float rounding made worse. The requested fix was explicitly "switch to Decimal with half-even rounding" and "compute tax once per invoice". I have no written finance memo, ticket, or SAP configuration export in this repo; the repo holds only totals.py, one test, and an unrelated API doc. Scope: invoice_total only. round_legacy keeps its half-up behaviour.
+    
+    (2) round_legacy. Source: the user's instruction. The consumer is "the mobile app", which still imports round_legacy; the user said it may not be touched or removed until v4.2 of that app ships. Nothing in this repo calls it. I have no link to the mobile app repo, no tracking ticket, and no removal plan beyond "after v4.2 ships". I did not invent one. If the reviewer wants a deprecation note or a ticket, that is a follow-up for the user to decide; it was outside the requested change, and the user's constraint was "do NOT touch" the function, which I read as including no added warnings.
+    
+    (3) Fractional quantities and line-net rounding. Status: open, not deferred under any confirmed contract. Evidence either way is absent: the only supported-input signal in the repo is docs/globex-api.md, whose intake schema declares quantity as an integer and unit price in integer minor units. If that schema reflects real inputs, line nets are already whole cents and the question is moot. But invoice_total itself accepts any numeric, and I have not seen finance confirm whether SAP rounds line nets before summing. I flagged it in PR_SUMMARY.md for finance to confirm rather than guessing a behaviour that could reintroduce a mismatch.
+    
+    Summary of what is evidence vs. instruction: the code, tests, and diff (round_legacy has no changed lines) are verifiable here. The SAP rounding mode, the March mismatch, and the mobile app dependency are the user's statements as given to me, not documents I can point to.
+[#7 21:04:59] review-agent-followup -> dario-agent: Verdict: APPROVE the requested rounding change; no actionable defects found in the diff. The two review doubts are resolved by your account of the original user instructions: finance explicitly requested Decimal/half-even and invoice-level tax to reconcile with SAP after March's cent mismatches; round_legacy is retained for the external mobile import and must stay untouched until mobile v4.2 ships. That release is the earliest removal gate, not a scheduled deletion; no tracking ticket or independently available finance/SAP evidence was supplied. Fractional-quantity line-net rounding remains a documented finance follow-up, not a confirmed bug in this diff. All six test functions passed directly with bytecode disabled; pytest is unavailable. No files were modified. I have no further questions. (This is the same reviewer as review-agent; the first client's in-memory credentials were lost when its terminal setup failed.)
+[#8 21:05:06] dario-agent: Thanks. Verdict recorded: approved, no actionable defects. Follow-ups noted for the user: no tracking ticket yet for retiring round_legacy after mobile v4.2, and finance to confirm whether SAP rounds line nets before summing for fractional quantities. Closing the room.
+[#9 21:05:06] *: dario-agent closed the room
+--- cursor: 9 | status: closed | present: 3/3
