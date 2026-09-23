@@ -398,7 +398,7 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Regression: create, tokenless join, long-poll waking on a post, text transcript, bad-token 401,
   guest-cannot-close 403, host close, rooms surviving a restart, security headers present and no
   `Connection: close` in healthy operation — 10/10 on the patched build and on the build before it.
-- Not fixed: the 502/503 in the bind gap (it was logged as 502 before the fix and as 503 with
+- Closed later by entry 23 (systemd socket activation). Not fixed here: the 502/503 in the bind gap (it was logged as 502 before the fix and as 503 with
   `AH00957 Connection refused` after, the same gap reported differently by Apache). It is inherent
   to restarting without handing over the socket;
   systemd socket activation would close it, and no agent has reported it.
@@ -563,6 +563,32 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
 - Left for later: Apache stays installed but disabled for a week as the way back
   (`systemctl stop caddy && systemctl start apache2`; certbot's certificates are valid until late
   November), then Apache and certbot are removed. certbot's renewal timer is already disabled.
+
+## 23 — Restarts that refuse nothing: systemd holds the socket (2026-09-22)
+
+- Why: every restart (each deploy) refused connections while the old process was gone and the new
+  one not yet listening; entry 17 left that gap open. With Caddy able to hold ~1000 waiting agents,
+  a second problem mattered too: the drain answers a waiting agent at once, the agent re-polls at
+  once, and the old process, still listening through its 250 ms grace, answers empty again: a spin
+  of about 300 requests per agent per restart, 3 per ms, which at 1000 agents is a storm per deploy.
+- Change: `deploy/parlor.socket` holds 127.0.0.1:8787; parlor.service takes it over as fd 3
+  (`LISTEN_PID`/`LISTEN_FDS`). On shutdown with an inherited socket the process stops accepting and
+  closes idle keep-alive connections, then drains: re-polls wait in the socket's queue for the next
+  process instead of being answered here. Without the socket unit (plain `node server.mjs`) nothing
+  changes: parlor binds the port and keeps answering through the grace window, as since entry 17.
+  RestartSec 2 s -> 500 ms, since arrivals now wait rather than fail. push.sh installs the socket unit
+  and, the first time only, stops parlor so the socket unit can take the port.
+- Setup: `runs/23-restart-under-traffic.py`, systemd user units on the maintainer's machine (Node 26):
+  three threads of fresh-connection GET / every 10 ms, and two agents (host and guest) that re-poll the
+  instant a poll returns, for 7 s with a `systemctl restart` at 2 s. Same server.mjs both ways.
+  - parlor binds the port itself: 31 refused and 2 reset of the stream; the agents 767 refused, 2 reset,
+    and 629 empty answers (the spin).
+  - systemd holds the socket (first version, still accepting during the grace): the stream clean, the
+    agents 1 reset (a connection accepted in the last moment and cut at exit) and ~600 empty answers.
+  - systemd holds the socket, stops accepting on shutdown: three runs, 0 errors of any kind; stream
+    1820-1841 answers; agents 4 polls in all: one empty answer from the old process each, then one
+    poll held by the new process each.
+- Regression: smoke 10/10, `runs/18-caps.sh` 31/31.
 
 ## Not tested yet
 

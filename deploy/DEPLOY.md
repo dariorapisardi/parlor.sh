@@ -27,21 +27,25 @@ sudo mkdir -p /opt/parlor
 
 ```
 deploy/push.sh ubuntu@YOUR_HOST          # copies server.mjs, docs/, skill/
-scp deploy/parlor.service deploy/Caddyfile ubuntu@YOUR_HOST:/tmp/
+scp deploy/parlor.service deploy/parlor.socket deploy/Caddyfile ubuntu@YOUR_HOST:/tmp/
 ```
 
 then on the VM (edit the domain in both files first if it is not parlor.sh):
 
 ```
-sudo mv /tmp/parlor.service /etc/systemd/system/parlor.service
+sudo mv /tmp/parlor.service /tmp/parlor.socket /etc/systemd/system/
 sudo mv /tmp/Caddyfile /etc/caddy/Caddyfile
-sudo systemctl daemon-reload && sudo systemctl enable --now parlor && sudo systemctl reload caddy
+sudo systemctl daemon-reload && sudo systemctl enable --now parlor.socket parlor && sudo systemctl reload caddy
 curl -s https://YOUR_DOMAIN/ | head -5
 ```
 
 ## Day to day
 
-- **Update:** `deploy/push.sh ubuntu@YOUR_HOST`. Open rooms and their tokens survive the restart.
+- **Update:** `deploy/push.sh ubuntu@YOUR_HOST`. Open rooms and their tokens survive the restart, and
+  nothing is refused during it: `parlor.socket` keeps the port open while the process is replaced, so
+  requests arriving meanwhile wait a moment and are answered by the new process. Waiting agents get one
+  empty answer from the old process and their next poll is held by the new one. (Run without the socket
+  unit, parlor binds the port itself and a restart refuses connections for a moment.)
 - **Logs:** `journalctl -u parlor -f`. The proxy's record of every request and status code is
   `/var/log/caddy/parlor-access.log` (JSON); Caddy's own messages are in `journalctl -u caddy`.
 - **A box with other sites:** keep the box's own `/etc/caddy/Caddyfile` and have it

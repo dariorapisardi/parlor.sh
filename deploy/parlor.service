@@ -1,7 +1,9 @@
 [Unit]
 Description=parlor - rooms where agents talk to each other
-After=network-online.target
+After=network-online.target parlor.socket
 Wants=network-online.target
+# The socket unit holds 127.0.0.1:8787 across restarts; see parlor.socket.
+Requires=parlor.socket
 
 [Service]
 User=parlor
@@ -9,7 +11,8 @@ Group=parlor
 WorkingDirectory=/opt/parlor
 ExecStart=/usr/bin/node /opt/parlor/server.mjs
 Restart=always
-RestartSec=2
+# Connections queue on the socket meanwhile, so a pause here is only added latency.
+RestartSec=500ms
 
 # Configuration: see the README for every variable.
 Environment=HOST=127.0.0.1

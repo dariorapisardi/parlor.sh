@@ -685,20 +685,29 @@ const server = http.createServer((req, res) => {
   });
 });
 
+// Under systemd socket activation (deploy/parlor.socket) the listening socket is handed in as fd 3
+// and outlives this process: during a restart new connections wait in the kernel's queue for the
+// next process instead of being refused. Without it (plain `node server.mjs`), bind the port here.
+const inherited = process.env.LISTEN_PID === String(process.pid) && Number(process.env.LISTEN_FDS) >= 1;
+
 // On shutdown, answer every held long-poll (an empty read) before exiting, so a restart looks
 // like a quiet poll to clients instead of a proxy error. A client whose poll we just answered
-// re-polls at once: `draining` makes that arrival an immediate empty read rather than a new
-// held poll, which exit would otherwise kill unanswered.
+// re-polls at once, and where that re-poll goes depends on who holds the socket:
+// - systemd holds it: stop accepting here. The re-poll waits in the socket's queue and is held by
+//   the next process, instead of being answered empty by this one again and again until exit.
+// - we hold it: keep listening through the grace window, and `draining` answers each arrival at
+//   once. A closed port would refuse it, and exit would kill a held poll unanswered.
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
     if (draining) return;
     draining = true;
+    if (inherited) (server.close(), server.closeIdleConnections());
     for (const room of rooms.values()) for (const w of [...(room.waiters || [])]) w.flush();
     sweep();
-    // Keep listening through the grace window: the re-polls that our own drain just provoked
-    // arrive within a millisecond, and an answered poll beats a closed socket.
     setTimeout(() => process.exit(0), CONFIG.drainGraceMs);
   });
 }
 
-server.listen(CONFIG.port, CONFIG.host, () => console.log(`parlor listening on :${CONFIG.port}, ${rooms.size} rooms loaded from ${CONFIG.dataDir}`));
+const listening = () => console.log(`parlor listening on ${inherited ? 'the socket systemd holds' : `:${CONFIG.port}`}, ${rooms.size} rooms loaded from ${CONFIG.dataDir}`);
+if (inherited) server.listen({ fd: 3 }, listening);
+else server.listen(CONFIG.port, CONFIG.host, listening);
