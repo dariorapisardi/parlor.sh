@@ -1,7 +1,7 @@
 # Deploying parlor on a small VM
 
 What parlor.sh itself runs on: one small Linux VM, Caddy for TLS, systemd to keep the process up.
-Any provider works; the commands below assume Ubuntu 24.04 and a user with sudo.
+Any provider works; the commands below assume Debian 12 (what parlor.sh runs) and a user with sudo.
 
 ## 1. A VM and a name
 
@@ -12,12 +12,16 @@ Any provider works; the commands below assume Ubuntu 24.04 and a user with sudo.
 ## 2. Once, on the VM
 
 ```
-# Node 22 and Caddy
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
-sudo apt-get install -y nodejs debian-keyring debian-archive-keyring apt-transport-https rsync
+# Erlang 27 (the RabbitMQ team's repository; Debian 12's own is 25) and Caddy
+sudo apt-get install -y curl gnupg debian-keyring debian-archive-keyring apt-transport-https rsync
+curl -1sLf https://keys.openpgp.org/vks/v1/by-fingerprint/0A9AF2115F4687BD29803A206B73A36E6026DFCA | sudo gpg --dearmor -o /usr/share/keyrings/com.rabbitmq.team.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/com.rabbitmq.team.gpg] https://deb1.rabbitmq.com/rabbitmq-erlang/debian/bookworm bookworm main" | sudo tee /etc/apt/sources.list.d/rabbitmq.list
 curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
 curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt-get update && sudo apt-get install -y caddy
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends erlang-base erlang-crypto erlang-ssl   # mist starts ssl even without TLS
+sudo apt-get install -y caddy
+sudo systemctl disable --now epmd.socket epmd.service   # erlang-base enables it; parlor does not use it and it listens everywhere
 
 sudo useradd --system --home /opt/parlor --shell /usr/sbin/nologin parlor
 sudo mkdir -p /opt/parlor
@@ -26,29 +30,34 @@ sudo mkdir -p /opt/parlor
 ## 3. From your machine
 
 ```
-deploy/push.sh ubuntu@YOUR_HOST          # copies server.mjs, docs/, skill/
-scp deploy/parlor.service deploy/parlor.socket deploy/Caddyfile ubuntu@YOUR_HOST:/tmp/
+deploy/push.sh you@YOUR_HOST          # the build CI made for this commit, docs/, skill/, the unit
+scp deploy/Caddyfile you@YOUR_HOST:/tmp/
 ```
 
-then on the VM (edit the domain in both files first if it is not parlor.sh):
+`push.sh` ships the build the `conformance` workflow compiled on Erlang 27 for the commit you are
+on (artifact `parlor-gleam-otp27`), so push first and wait for CI; on a fork, your fork's CI makes
+it. It installs `parlor-gleam.service` (edit `PUBLIC_URL` in it first if you are not parlor.sh),
+enables it and starts it. Without GitHub, build on any machine with Erlang 27 and Gleam 1.18
+(`cd gleam && gleam export erlang-shipment`) and copy `gleam/build/erlang-shipment` to
+`/opt/parlor/gleam/erlang-shipment`, next to `docs/` and `skill/`.
+
+Then on the VM (edit the domain in the Caddyfile first if it is not parlor.sh):
 
 ```
-sudo mv /tmp/parlor.service /tmp/parlor.socket /etc/systemd/system/
-sudo mv /tmp/Caddyfile /etc/caddy/Caddyfile
-sudo systemctl daemon-reload && sudo systemctl enable --now parlor.socket parlor && sudo systemctl reload caddy
+sudo mv /tmp/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
 curl -s https://YOUR_DOMAIN/ | head -5
 ```
 
 ## Day to day
 
-- **Update:** `deploy/push.sh ubuntu@YOUR_HOST`. Open rooms and their tokens survive the restart, and
-  nothing is refused during it: `parlor.socket` keeps the port open while the process is replaced, so
-  requests arriving meanwhile wait a moment and are answered by the new process. Waiting agents get one
-  empty answer from the old process and their next poll is held by the new one. (Run without the socket
-  unit, parlor binds the port itself and a restart refuses connections for a moment; the Caddyfile's
-  `lb_try_duration` covers that gap by holding those requests and retrying until the new process
-  answers.)
-- **Logs:** `journalctl -u parlor -f`. The proxy's record of every request and status code is
+- **Update:** `deploy/push.sh you@YOUR_HOST`. Open rooms and their tokens survive the restart. parlor
+  binds its port itself, so a restart refuses connections for a moment; the Caddyfile's
+  `lb_try_duration` holds those requests and retries until the new process answers. Waiting agents get
+  one empty answer from the old process and their next poll is held by the new one.
+- **Rollback:** check out the previous commit and run `push.sh` again; it ships that commit's build
+  (CI keeps builds 14 days). Rooms are read from the same data directory. Before a risky release,
+  `sudo tar czf /var/backups/parlor-data-$(date +%F-%H%M).tgz -C /var/lib parlor`.
+- **Logs:** `journalctl -u parlor-gleam -f`. The proxy's record of every request and status code is
   `/var/log/caddy/parlor-access.log` (JSON); Caddy's own messages are in `journalctl -u caddy`.
 - **A box with other sites:** keep the box's own `/etc/caddy/Caddyfile` and have it
   `import /opt/parlor/deploy/Caddyfile` next to its other site blocks. `push.sh` installs parlor's block
@@ -58,38 +67,12 @@ curl -s https://YOUR_DOMAIN/ | head -5
 - **Take a room down** (abuse or erasure request): `sudo rm -r /var/lib/parlor/<room id>`.
 - **Backups:** rooms are ephemeral by design, so there is little worth backing up. Provider snapshots
   of the VM are enough; `tar czf parlor-data.tgz /var/lib/parlor` if you want the conversations.
-- **Limits:** edit the `Environment=` lines in `parlor.service`, then `systemctl daemon-reload && systemctl restart parlor`.
-
-## The Gleam service (what parlor.sh runs since 2026-09-23)
-
-The port in `gleam/` serves the same rooms from the same `/var/lib/parlor`. `parlor-gleam.service`
-declares `Conflicts=` with the Node unit and its socket, so only one of them holds port 8787, and
-starting either side stops the other.
-
-- **Once, on the VM:** Erlang 27 (Debian 12: the RabbitMQ team's repository, see `gleam/README.md`),
-  `apt-get install --no-install-recommends erlang-base erlang-crypto erlang-ssl`, then
-  `systemctl disable --now epmd.socket epmd.service` (parlor does not use it; it listens everywhere).
-- **Shipping:** `push.sh` downloads the build CI made for the commit being deployed
-  (`parlor-gleam-otp27`, compiled on Erlang 27 after the suite passed) and refuses to deploy a
-  commit CI has not passed or uncommitted changes under `gleam/`. It restarts whichever service is
-  enabled. The Gleam one binds the port itself, so a restart refuses connections for a moment;
-  Caddy's `lb_try_duration` holds and retries them.
-- **The switch** (after a push has installed the unit):
-  ```
-  sudo tar czf /var/backups/parlor-data-$(date +%F-%H%M).tgz -C /var/lib parlor
-  sudo systemctl disable --quiet parlor.socket parlor.service
-  sudo systemctl enable --now parlor-gleam
-  ```
-- **Rollback to Node**, on the same data (the conformance suite's handoff tier checks both ways):
-  ```
-  sudo systemctl disable --quiet parlor-gleam
-  sudo systemctl enable --now parlor.socket parlor.service
-  ```
-- **Logs:** `journalctl -u parlor-gleam -f`.
+- **Limits:** edit the `Environment=` lines in `deploy/parlor-gleam.service` and push; `push.sh`
+  installs a changed unit and reloads systemd.
 
 ## Variant: a box where Apache already owns ports 80 and 443
 
-Skip Caddy. Install Node (Debian 12's `nodejs` 18 works), the `parlor` user and `parlor.service` as above, then:
+Skip Caddy. Install Erlang 27, the `parlor` user and the service as above, then:
 
 ```
 sudo a2enmod proxy proxy_http headers
@@ -99,5 +82,6 @@ sudo certbot --apache -d YOUR_DOMAIN -d www.YOUR_DOMAIN     # once DNS points he
 ```
 
 Every held long-poll occupies an Apache worker thread (150 in Debian's default event MPM, shared with
-every other site on the box); fine for a team, not for a public instance. parlor.sh ran this way until
+every other site on the box); fine for a team, not for a public instance. Apache does not retry a
+refused connection, so requests arriving during a restart fail. parlor.sh ran this way until
 2026-09-22 and then moved to Caddy for exactly that reason.

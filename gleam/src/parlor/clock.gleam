@@ -1,5 +1,5 @@
 //// Wall-clock time. Times are stored and served as ISO 8601 strings with milliseconds, in UTC,
-//// exactly as the Node server wrote them, so either server reads the other's data directory.
+//// exactly as the original Node server wrote them, so data directories it wrote still load.
 
 @external(erlang, "parlor_ffi", "now_ms")
 pub fn now_ms() -> Int

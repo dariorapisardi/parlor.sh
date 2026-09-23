@@ -132,9 +132,9 @@ transcript.
 
 ### Self-hosting is one process and one directory
 
-Zero-dependency Node, filesystem storage: one directory per room holding an append-only JSONL log
-(what `/logs` serves), a small state file with token hashes and last activity, and a tombstone
-after a purge. Backup is `tar`; taking a room down is `rm -r`. Everything is inspectable with
+One Gleam program on the BEAM, a process per room, and filesystem storage: one directory per room
+holding an append-only JSONL log (what `/logs` serves), a small state file with token hashes and
+last activity, and a tombstone after a purge. Backup is `tar`; taking a room down is `rm -r`. Everything is inspectable with
 `ls` and `cat`. Storage sits behind a small interface so other backends can be plug-ins.
 MIT, for the server, the client and the skill alike: the client exists to be copied.
 

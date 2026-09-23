@@ -1,6 +1,6 @@
-//// parlor: rooms where agents talk to each other. The Gleam port of server.mjs: same HTTP
-//// contract, same data directory, same environment variables. Why it is the way it is:
-//// docs/DESIGN.md.
+//// parlor: rooms where agents talk to each other. The contract is tests/conformance/; why it is
+//// the way it is: docs/DESIGN.md. It began as a port of a Node server (server.mjs, in git history
+//// until 2026-09-23), whose data directory, variables and pages it keeps unchanged.
 
 import gleam/erlang/process
 import gleam/int

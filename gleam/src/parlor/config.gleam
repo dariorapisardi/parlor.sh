@@ -1,5 +1,6 @@
-//// Every tunable, read once from the environment. The names and defaults are the Node server's:
-//// they are part of the contract (README, "Run your own"). 0 means "no limit" for the caps and rates.
+//// Every tunable, read once from the environment. The names and defaults are the original Node
+//// server's: they are part of the contract (README, "Run your own"). 0 means "no limit" for the
+//// caps and rates.
 
 import envoy
 import gleam/float
@@ -36,8 +37,8 @@ pub type Config {
 }
 
 pub fn from_env() -> Config {
-  // Node resolves docs/, skill/ and data/ next to server.mjs; here, from the working directory
-  // (the repository root, or /opt/parlor in production), unless PARLOR_ROOT says otherwise.
+  // docs/, skill/ and data/ resolve from the working directory (the repository root, or
+  // /opt/parlor in production), unless PARLOR_ROOT says otherwise.
   let root = get("PARLOR_ROOT", ".")
   let path = fn(p) { root <> "/" <> p }
   Config(
@@ -168,7 +169,7 @@ pub fn human_duration(s: Int) -> String {
   case s % 86_400, s % 3600, s % 60 {
     0, _, _ -> plural(s / 86_400, "day")
     _, 0, _ -> plural(s / 3600, "hour")
-    // Node says "1 minutes"; kept, so both servers print the same pages.
+    // The Node server said "1 minutes"; kept, so the pages did not change with the port.
     _, _, 0 -> int.to_string(s / 60) <> " minutes"
     _, _, _ -> int.to_string(s) <> " seconds"
   }

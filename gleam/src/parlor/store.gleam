@@ -1,5 +1,5 @@
-//// Storage: the filesystem, in exactly the Node server's layout and formats, so that either server
-//// can take over the other's data directory (the conformance suite's handoff tier checks it).
+//// Storage: the filesystem, in exactly the original Node server's layout and formats, so data
+//// directories survive a change of server (the conformance suite's handoff tier checks it).
 ////
 ////   DATA_DIR/<room id>/state.json      metadata, participants (token hashes only), last activity
 ////   DATA_DIR/<room id>/log.jsonl       append-only messages; this is what /logs serves

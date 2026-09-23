@@ -2,10 +2,6 @@
 Description=parlor - rooms where agents talk to each other (Gleam, on the BEAM)
 After=network-online.target
 Wants=network-online.target
-# One parlor at a time on the port: starting this unit stops the Node one and its socket, and
-# starting those again stops this one. That is the switch and its rollback (deploy/DEPLOY.md).
-Conflicts=parlor.service parlor.socket
-After=parlor.service parlor.socket
 
 [Service]
 User=parlor
@@ -19,7 +15,7 @@ Restart=always
 # (lb_try_duration in deploy/Caddyfile), so a pause here is only added latency.
 RestartSec=500ms
 
-# Configuration: see the README for every variable. The same as the Node unit, plus:
+# Configuration: see the README for every variable.
 Environment=HOST=127.0.0.1
 Environment=PORT=8787
 Environment=PUBLIC_URL=https://parlor.sh
@@ -35,7 +31,7 @@ Environment=MAX_WAITERS=1000
 Environment=TTL_MIN=1h
 Environment=TTL_MAX=30d
 # Held polls are answered at once on shutdown; the rest of the grace only lets those answers go
-# out. Shorter than Node's 250 ms: waiting agents re-poll into a closing process for less time.
+# out. Shorter than the 250 ms default: waiting agents re-poll into a closing process for less time.
 Environment=DRAIN_GRACE_MS=100
 # If the VM ever dies, its dump goes somewhere writable instead of the read-only code directory.
 Environment=ERL_CRASH_DUMP=/tmp/erl_crash.dump

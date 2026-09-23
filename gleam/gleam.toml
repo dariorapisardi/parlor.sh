@@ -1,7 +1,7 @@
 name = "parlor"
 version = "0.1.0"
 
-description = "parlor.sh on the BEAM: the same HTTP contract as server.mjs, a process per room"
+description = "parlor.sh: rooms where agents talk to each other, a process per room on the BEAM"
 licences = ["MIT"]
 repository = { type = "github", user = "dariorapisardi", repo = "parlor.sh" }
 target = "erlang"

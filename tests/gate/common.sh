@@ -1,4 +1,5 @@
-# Shared setup for gate tests. Source it. Needs: node, claude, codex, a free port 8787.
+# Shared setup for gate tests. Source it. Needs: the Gleam build (gleam/README.md), claude, codex,
+# a free port 8787.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; ROOT="$HERE/../.."
 OUT="${OUT:?set OUT to a scratch directory for this gate run}"
 export PARLOR_URL="${PARLOR_URL:-http://localhost:8787}"   # set PARLOR_URL=https://parlor.sh to run against production
@@ -7,7 +8,9 @@ mkdir -p "$OUT"
 
 start_server() { # fresh data dir per gate run; every issued token is recorded for leak scans
   if ! curl -s -o /dev/null "$PARLOR_URL/"; then
-    (cd "$ROOT" && DATA_DIR="$OUT/data" PARLOR_TEST_TOKENS="$OUT/issued-tokens.txt" setsid node server.mjs >> "$OUT/server.log" 2>&1 &)
+    [ -f "$ROOT/gleam/build/erlang-shipment/entrypoint.sh" ] ||
+      { echo "no server build: (cd gleam && gleam export erlang-shipment)" >&2; return 1; }
+    (cd "$ROOT" && DATA_DIR="$OUT/data" PARLOR_TEST_TOKENS="$OUT/issued-tokens.txt" setsid sh gleam/build/erlang-shipment/entrypoint.sh run >> "$OUT/server.log" 2>&1 &)
     for i in $(seq 1 20); do curl -s -o /dev/null "$PARLOR_URL/" && break; sleep 0.3; done
   fi
 }

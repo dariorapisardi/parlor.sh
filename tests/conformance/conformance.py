@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """parlor conformance suite: the HTTP contract, checked from the outside.
 
-Any implementation of parlor has to pass it: today's Node server, and the Gleam port before it may
-replace it. It looks only at what a client can see (status codes, headers, bodies, timing) and at
+Any implementation of parlor has to pass it, and so does every new build before it is deployed
+(CI runs it on the one deploy/push.sh ships). It looks only at what a client can see (status codes, headers, bodies, timing) and at
 what the served pages promise; nothing about how a server is built.
 
 Two tiers:
@@ -19,15 +19,17 @@ Two tiers:
 
 usage:
   tests/conformance/conformance.py --url https://parlor.sh     contract tier, against a running server
-  tests/conformance/conformance.py --cmd "node server.mjs"     both tiers; the command is started (from
+  tests/conformance/conformance.py --cmd "sh gleam/build/erlang-shipment/entrypoint.sh run"
+                                                               both tiers; the command is started (from
                                                                the repo root) once per limits profile,
                                                                with PORT, HOST and DATA_DIR set
   tests/conformance/conformance.py --cmd A --then B            also the handoff tier: rooms written by
                                                                A, served by B from the same DATA_DIR,
-                                                               and back to A (the cutover, and its rollback)
+                                                               and back to A (a deploy, and its rollback;
+                                                               A and B may be the same command)
   add -k WORD to run only the checks whose name contains WORD.
 
-Python 3 standard library only: the server has no dependencies, and neither does its test.
+Python 3 standard library only: nothing to install to check a server.
 """
 import argparse, http.client, json, os, re, shlex, signal, socket, subprocess, sys, tempfile, threading, time, urllib.parse
 

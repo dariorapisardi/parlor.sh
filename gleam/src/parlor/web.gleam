@@ -1,6 +1,5 @@
 //// HTTP: routes, content negotiation, and the text every response is made of. The pages are the
-//// ones in docs/, rendered the same way the Node server renders them, so both servers serve the
-//// same bytes for the same room.
+//// ones in docs/, rendered the way the original Node server rendered them, byte for byte.
 
 import exception
 import gleam/bit_array

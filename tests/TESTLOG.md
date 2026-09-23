@@ -751,6 +751,17 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
 - Rollback, if needed: `disable parlor-gleam`, `enable --now parlor.socket parlor.service` on the
   same data (deploy/DEPLOY.md).
 
+## 30 — Node server removed (2026-09-23)
+
+- Change: `server.mjs`, `deploy/parlor.service`, `deploy/parlor.socket` and
+  `tests/conformance/compare.py` (Node against Gleam, response by response) deleted. The Gleam
+  server is the only one; CI builds and checks it alone, `push.sh` ships and restarts only
+  `parlor-gleam`, the gate harness starts the Gleam build, DEPLOY.md installs Erlang 27 on Debian 12.
+- Check: conformance, contract and limits tiers plus the handoff tier across a restart of the same
+  build (`--cmd X --then X`): 55 passed, 0 failed. Gate harness `start_server` smoke: page served.
+- Rollback is now an older commit through `push.sh` (CI keeps builds 14 days), on the same data.
+- Served pages unchanged (neither mentioned Node), so no naive-agent run.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

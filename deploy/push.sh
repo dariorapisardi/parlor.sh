@@ -18,36 +18,24 @@ build="$(mktemp -d)"; trap 'rm -rf "$build"' EXIT
 gh run download "$run" -n parlor-gleam-otp27 -D "$build/gleam/erlang-shipment"
 
 rsync -az --delete \
-  --include='/server.mjs' --include='/docs/***' --include='/skill/***' --include='/LICENSE' --include='/brand/***' --include='/README.md' \
-  --include='/deploy/' --include='/deploy/parlor.service' --include='/deploy/parlor.socket' --include='/deploy/parlor-gleam.service' \
+  --include='/docs/***' --include='/skill/***' --include='/LICENSE' --include='/brand/***' --include='/README.md' \
+  --include='/deploy/' --include='/deploy/parlor-gleam.service' \
   --include='/deploy/Caddyfile' --exclude='*' "$here/" "$target:/tmp/parlor-release/"
 rsync -az --delete "$build/gleam/" "$target:/tmp/parlor-release/gleam/"
 ssh "$target" '
   set -e
   sudo rsync -a --delete /tmp/parlor-release/ /opt/parlor/
-  # The units carry the production limits and the socket; a changed unit needs a reload before use.
-  for u in parlor.socket parlor.service parlor-gleam.service; do
-    if ! sudo cmp -s "/opt/parlor/deploy/$u" "/etc/systemd/system/$u"; then
-      sudo install -m 644 "/opt/parlor/deploy/$u" "/etc/systemd/system/$u"
-      changed=1; echo "$u installed"
-    fi
-  done
-  [ -n "${changed:-}" ] && sudo systemctl daemon-reload
-  if systemctl is-enabled --quiet parlor-gleam; then
-    # The Gleam service binds the port itself; Caddy retries the connections refused meanwhile.
-    sudo systemctl restart parlor-gleam
-    unit=parlor-gleam
-  elif systemctl is-active --quiet parlor.socket; then
-    # systemd holds the port: connections arriving during the restart wait for the new process.
-    sudo systemctl restart parlor
-  else
-    # First time only: the running parlor bound the port itself and must let go before the socket
-    # unit can take it. This one restart can still refuse connections for a moment.
-    sudo systemctl stop parlor && sudo systemctl enable --now --quiet parlor.socket && sudo systemctl start parlor
-    echo "socket unit now holds the port"
+  # The unit carries the production limits; a changed unit needs a reload before use.
+  u=parlor-gleam.service
+  if ! sudo cmp -s "/opt/parlor/deploy/$u" "/etc/systemd/system/$u"; then
+    sudo install -m 644 "/opt/parlor/deploy/$u" "/etc/systemd/system/$u"
+    sudo systemctl daemon-reload; echo "$u installed"
   fi
+  # parlor binds the port itself; Caddy retries the connections refused during the restart.
+  sudo systemctl enable --quiet parlor-gleam
+  sudo systemctl restart parlor-gleam
   for i in $(seq 1 50); do curl -s -o /dev/null http://127.0.0.1:8787/ && break; sleep 0.2; done
-  systemctl is-active "${unit:-parlor}"
+  systemctl is-active parlor-gleam
   # Caddy imports deploy/Caddyfile from the release; a reload is graceful (no connection dropped).
   if systemctl is-active --quiet caddy; then sudo systemctl reload caddy && echo "caddy reloaded"; fi
   curl -s -o /dev/null -w "local check: %{http_code}\n" http://127.0.0.1:8787/'
