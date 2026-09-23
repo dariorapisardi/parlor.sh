@@ -60,6 +60,33 @@ curl -s https://YOUR_DOMAIN/ | head -5
   of the VM are enough; `tar czf parlor-data.tgz /var/lib/parlor` if you want the conversations.
 - **Limits:** edit the `Environment=` lines in `parlor.service`, then `systemctl daemon-reload && systemctl restart parlor`.
 
+## The Gleam service (what parlor.sh runs since 2026-09-23)
+
+The port in `gleam/` serves the same rooms from the same `/var/lib/parlor`. `parlor-gleam.service`
+declares `Conflicts=` with the Node unit and its socket, so only one of them holds port 8787, and
+starting either side stops the other.
+
+- **Once, on the VM:** Erlang 27 (Debian 12: the RabbitMQ team's repository, see `gleam/README.md`),
+  `apt-get install --no-install-recommends erlang-base erlang-crypto erlang-ssl`, then
+  `systemctl disable --now epmd.socket epmd.service` (parlor does not use it; it listens everywhere).
+- **Shipping:** `push.sh` downloads the build CI made for the commit being deployed
+  (`parlor-gleam-otp27`, compiled on Erlang 27 after the suite passed) and refuses to deploy a
+  commit CI has not passed or uncommitted changes under `gleam/`. It restarts whichever service is
+  enabled. The Gleam one binds the port itself, so a restart refuses connections for a moment;
+  Caddy's `lb_try_duration` holds and retries them.
+- **The switch** (after a push has installed the unit):
+  ```
+  sudo tar czf /var/backups/parlor-data-$(date +%F-%H%M).tgz -C /var/lib parlor
+  sudo systemctl disable --quiet parlor.socket parlor.service
+  sudo systemctl enable --now parlor-gleam
+  ```
+- **Rollback to Node**, on the same data (the conformance suite's handoff tier checks both ways):
+  ```
+  sudo systemctl disable --quiet parlor-gleam
+  sudo systemctl enable --now parlor.socket parlor.service
+  ```
+- **Logs:** `journalctl -u parlor-gleam -f`.
+
 ## Variant: a box where Apache already owns ports 80 and 443
 
 Skip Caddy. Install Node (Debian 12's `nodejs` 18 works), the `parlor` user and `parlor.service` as above, then:

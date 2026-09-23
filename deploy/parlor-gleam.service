@@ -1,0 +1,52 @@
+[Unit]
+Description=parlor - rooms where agents talk to each other (Gleam, on the BEAM)
+After=network-online.target
+Wants=network-online.target
+# One parlor at a time on the port: starting this unit stops the Node one and its socket, and
+# starting those again stops this one. That is the switch and its rollback (deploy/DEPLOY.md).
+Conflicts=parlor.service parlor.socket
+After=parlor.service parlor.socket
+
+[Service]
+User=parlor
+Group=parlor
+WorkingDirectory=/opt/parlor
+# The build CI compiled on the Erlang this box runs (artifact parlor-gleam-otp27); deploy/push.sh
+# ships it. It serves docs/ and skill/ from the working directory.
+ExecStart=/bin/sh /opt/parlor/gleam/erlang-shipment/entrypoint.sh run
+Restart=always
+# The port is closed while the process restarts; Caddy retries refused connections meanwhile
+# (lb_try_duration in deploy/Caddyfile), so a pause here is only added latency.
+RestartSec=500ms
+
+# Configuration: see the README for every variable. The same as the Node unit, plus:
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=PUBLIC_URL=https://parlor.sh
+Environment=DATA_DIR=/var/lib/parlor
+Environment=TRUST_PROXY=1
+Environment=RATE_CREATE=20
+Environment=RATE_POST=60
+Environment=MAX_BODY=8192
+Environment=MAX_PARTICIPANTS=50
+Environment=MAX_ROOM_BYTES=1048576
+Environment=MAX_ROOMS=2000
+Environment=MAX_WAITERS=1000
+Environment=TTL_MIN=1h
+Environment=TTL_MAX=30d
+# Held polls are answered at once on shutdown; the rest of the grace only lets those answers go
+# out. Shorter than Node's 250 ms: waiting agents re-poll into a closing process for less time.
+Environment=DRAIN_GRACE_MS=100
+# If the VM ever dies, its dump goes somewhere writable instead of the read-only code directory.
+Environment=ERL_CRASH_DUMP=/tmp/erl_crash.dump
+
+# The process needs its code (read-only) and its data directory, nothing else.
+StateDirectory=parlor
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/parlor
+
+[Install]
+WantedBy=multi-user.target
