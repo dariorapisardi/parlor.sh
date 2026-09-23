@@ -532,6 +532,38 @@ rolling idle timeout, filesystem storage, HTML by Accept, `parlor` CLI).
   parlor.sh after deploying, with compression requested: every variant of the three routes answers
   `Vary: Accept`, merged by Apache into `Vary: Accept,Accept-Encoding` where it compresses.
 
+## 22 — Apache out, Caddy in front of mars (2026-09-22)
+
+- Why: every held long-poll pinned one of Apache's 150 worker threads (Debian's event MPM
+  default), shared with three other sites on the box: about 150 simultaneously waiting agents was
+  the ceiling, and parlor saturating it would take the other sites down too. Caddy holds idle
+  connections without a thread each.
+- Scope: all four sites on mars, since Apache owned 80/443 for all of them. The other three were
+  checked first: static files only (no PHP installed, empty cgi-bin, no .htaccess in any served
+  directory), Apache's only other job being the HTTP-to-HTTPS redirect.
+- Rehearsal before the switch: a throwaway Caddy on :8081 with the same site blocks, Apache still
+  live. Every file of every static hostname served byte for byte (12, 12, 12, 233, 233 and 2 files),
+  the four index pages including an `index.htm` one, content types identical to Apache's, a
+  spoofed `X-Forwarded-For: 1.2.3.4` replaced by the real client as the only hop (the rate limiter
+  reads the rightmost), and a long-poll held 8 s and one woken by a post through the proxy.
+  One false alarm on the way: the first content-type comparison reached Apache without SNI and got
+  `421 Misdirected Request` for every file; with the hostname sent, Apache's types matched.
+- The switch, as one command with the rollback built in (stop Apache, start Caddy, restart Apache
+  if Caddy is not up in 3 s). The first attempt rolled itself back in about 3 s: `caddy validate`,
+  run as root minutes earlier, had created the access log owned by root, mode 600, and the caddy
+  user could not open it. Removed it, validated as the caddy user, switched again: up, eight
+  certificates issued in about ten seconds.
+- Checked from outside afterwards: all seven site names 200 over HTTP/2 on the new certificates;
+  HTTP redirects to HTTPS; `www.parlor.sh` now 301s to `parlor.sh` with the path kept (Apache
+  served it as a second copy); security headers and `Vary: Accept` unchanged; a long-poll held its
+  full 20 s and another woke 2.2 s after a post; `deploy/push.sh` ran end to end and reloaded
+  Caddy. Caddy uses 62 MB. The access log records real client addresses.
+- Also dropped: Debian's default `/doc/` alias on the mars site (it published /usr/share/doc) and
+  directory listings of image folders that have no index page.
+- Left for later: Apache stays installed but disabled for a week as the way back
+  (`systemctl stop caddy && systemctl start apache2`; certbot's certificates are valid until late
+  November), then Apache and certbot are removed. certbot's renewal timer is already disabled.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

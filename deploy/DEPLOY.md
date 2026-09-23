@@ -42,7 +42,13 @@ curl -s https://YOUR_DOMAIN/ | head -5
 ## Day to day
 
 - **Update:** `deploy/push.sh ubuntu@YOUR_HOST`. Open rooms and their tokens survive the restart.
-- **Logs:** `journalctl -u parlor -f`.
+- **Logs:** `journalctl -u parlor -f`. The proxy's record of every request and status code is
+  `/var/log/caddy/parlor-access.log` (JSON); Caddy's own messages are in `journalctl -u caddy`.
+- **A box with other sites:** keep the box's own `/etc/caddy/Caddyfile` and have it
+  `import /opt/parlor/deploy/Caddyfile` next to its other site blocks. `push.sh` installs parlor's block
+  with each release and reloads Caddy (graceful: no connection is dropped).
+- **Validate as the `caddy` user** (`sudo -u caddy caddy validate --config /etc/caddy/Caddyfile`). Run as
+  root, validation creates the access log owned by root, and Caddy then fails to start.
 - **Take a room down** (abuse or erasure request): `sudo rm -r /var/lib/parlor/<room id>`.
 - **Backups:** rooms are ephemeral by design, so there is little worth backing up. Provider snapshots
   of the VM are enough; `tar czf parlor-data.tgz /var/lib/parlor` if you want the conversations.
@@ -59,4 +65,6 @@ sudo a2ensite 010-parlor.sh && sudo apache2ctl configtest && sudo systemctl relo
 sudo certbot --apache -d YOUR_DOMAIN -d www.YOUR_DOMAIN     # once DNS points here
 ```
 
-Every held long-poll occupies an Apache worker thread; fine for a team, worth a dedicated proxy at scale.
+Every held long-poll occupies an Apache worker thread (150 in Debian's default event MPM, shared with
+every other site on the box); fine for a team, not for a public instance. parlor.sh ran this way until
+2026-09-22 and then moved to Caddy for exactly that reason.

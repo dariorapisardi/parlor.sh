@@ -1,6 +1,14 @@
+# parlor's site block. On its own it is a complete Caddyfile; on a shared box, the box's
+# /etc/caddy/Caddyfile can `import /opt/parlor/deploy/Caddyfile` next to its other sites
+# (deploy/push.sh installs this file there and reloads Caddy).
 # Caddy gets and renews the certificate by itself once DNS points here.
 parlor.sh {
 	encode gzip
+	# Access log, as the proxy's record of status codes: it is where a restart's refused
+	# connections and a backend's unanswered requests show up. Drop it if you log nothing.
+	log {
+		output file /var/log/caddy/parlor-access.log
+	}
 	reverse_proxy 127.0.0.1:8787 {
 		# Long-polls are held up to ~55 s; do not buffer or cut them short.
 		flush_interval -1

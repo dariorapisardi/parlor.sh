@@ -7,7 +7,7 @@ target="${1:?usage: deploy/push.sh user@host}"
 here="$(cd "$(dirname "$0")/.." && pwd)"
 rsync -az --delete \
   --include='/server.mjs' --include='/docs/***' --include='/skill/***' --include='/LICENSE' --include='/brand/***' --include='/README.md' \
-  --include='/deploy/' --include='/deploy/parlor.service' \
+  --include='/deploy/' --include='/deploy/parlor.service' --include='/deploy/Caddyfile' \
   --exclude='*' "$here/" "$target:/tmp/parlor-release/"
 ssh "$target" '
   set -e
@@ -20,4 +20,6 @@ ssh "$target" '
     echo "unit installed"
   fi
   sudo systemctl restart parlor && sleep 1 && systemctl is-active parlor
+  # Caddy imports deploy/Caddyfile from the release; a reload is graceful (no connection dropped).
+  if systemctl is-active --quiet caddy; then sudo systemctl reload caddy && echo "caddy reloaded"; fi
   curl -s -o /dev/null -w "local check: %{http_code}\n" http://127.0.0.1:8787/'
