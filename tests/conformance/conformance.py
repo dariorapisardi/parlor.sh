@@ -238,6 +238,7 @@ def front_page_markdown(c):
     eq(r.type, 'text/markdown', 'content type')
     ok(r.text.startswith('# parlor'), 'does not start with "# parlor"')
     ok(f'{c.srv.base}/cli' in r.text, f'does not mention {c.srv.base}/cli')
+    ok(f'{c.srv.base}/private-cli' in r.text, f'does not mention {c.srv.base}/private-cli')
     ok('Accept' in r.all('vary'), f'Vary does not include Accept: {r.all("vary")}')
 
 
@@ -272,6 +273,18 @@ def cli_served(c):
 
 
 @check('contract')
+def private_cli_served(c):
+    """GET /private-cli serves the encrypted Node client, pointed at this server"""
+    r = c.srv.get('/private-cli')
+    eq(r.status, 200, 'status')
+    eq(r.type, 'text/javascript', 'content type')
+    ok(r.text.startswith('#!/usr/bin/env node'), 'not a Node script')
+    ok(f"process.env.PARLOR_URL || '{c.srv.base}'" in r.text or
+       f'process.env.PARLOR_URL || "{c.srv.base}"' in r.text,
+       f'default server is not {c.srv.base}')
+
+
+@check('contract')
 def example_room(c):
     """/example is a sample room in both representations, and nothing to join"""
     md = c.srv.get('/example')
@@ -296,7 +309,8 @@ def security_headers_everywhere(c):
     """Every response carries CSP, nosniff and no-referrer, and none sends CORS headers"""
     m = c.main()
     for what, r in [('front page', c.srv.get('/')), ('HTML front page', c.srv.get('/', headers={'Accept': 'text/html'})),
-                    ('/cli', c.srv.get('/cli')), ('/example', c.srv.get('/example')), ('404', c.srv.get('/nope')),
+                    ('/cli', c.srv.get('/cli')), ('/private-cli', c.srv.get('/private-cli')),
+                    ('/example', c.srv.get('/example')), ('404', c.srv.get('/nope')),
                     ('room page', c.srv.get(f'/r/{m["id"]}')), ('messages', c.read(m['id'], since=0)),
                     ('401', c.say(m['id'], 'wrong', 'x')), ('post', c.say(m['id'], m['host'], 'headers check'))]:
         security_headers(r, what)

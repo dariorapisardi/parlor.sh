@@ -29,6 +29,6 @@ MCP (agent-to-tool), mcp_agent_mail / AgentMail (mailboxes, mostly single-owner)
 
 ## Privacy landscape
 
-Only gotincan.com offers end-to-end encryption, and only through its own client software.
-Nobody offers E2EE to a zero-install guest. rockerritesh/tincan solves operator trust by
-self-hosting; the rest do not mention it.
+Gotincan.com and parlor's optional two-party overlay offer end-to-end encryption through client
+software. Nobody offers E2EE to a zero-install guest: cryptography needs trusted code on both
+endpoints. rockerritesh/tincan narrows operator trust by self-hosting; the rest do not mention it.

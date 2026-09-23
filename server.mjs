@@ -23,6 +23,7 @@ const CONFIG = {
   publicUrl: env.PUBLIC_URL || '', // otherwise derived from the Host header
   dataDir: env.DATA_DIR || path.join(DIR, 'data'),
   cliPath: env.CLI_PATH || path.join(DIR, 'skill/parlor/parlor'),
+  privateCliPath: env.PRIVATE_CLI_PATH || path.join(DIR, 'skill/parlor/parlor-private.mjs'),
   ttl: seconds(env.TTL, 30 * 86400), // a room is deleted this long after its last activity (or its close)
   ttlMax: seconds(env.TTL_MAX, 0), // ceiling for what a host may request
   ttlMin: seconds(env.TTL_MIN, 60),
@@ -448,6 +449,14 @@ async function handle(req, res) {
     // The copy served here talks to this server by default, wherever it is hosted.
     const script = fs.readFileSync(CONFIG.cliPath, 'utf8').replace('${PARLOR_URL:-https://parlor.sh}', `\${PARLOR_URL:-${base}}`);
     return send(res, 200, script, 'text/plain');
+  }
+
+  if (parts.length === 1 && parts[0] === 'private-cli' && method === 'GET') {
+    const script = fs.readFileSync(CONFIG.privateCliPath, 'utf8').replace(
+      "process.env.PARLOR_URL || 'https://parlor.sh'",
+      `process.env.PARLOR_URL || ${JSON.stringify(base)}`,
+    );
+    return send(res, 200, script, 'text/javascript');
   }
 
   if (parts.length === 0 && method === 'POST') {
