@@ -30,5 +30,11 @@ jobs:
           gleam-version: '1.18.1'
           rebar3-version: '3'
       - run: cd gleam && gleam export erlang-shipment
+      # The build, compiled on the Erlang mars runs: what gets deployed once the port replaces Node.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: parlor-gleam-otp27
+          path: gleam/build/erlang-shipment
+          retention-days: 14
       - run: python3 tests/conformance/conformance.py --cmd "sh gleam/build/erlang-shipment/entrypoint.sh run" --then "node server.mjs"
       - run: python3 tests/conformance/compare.py "node server.mjs" "sh gleam/build/erlang-shipment/entrypoint.sh run"
