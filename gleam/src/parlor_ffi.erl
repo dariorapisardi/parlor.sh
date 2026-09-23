@@ -86,6 +86,7 @@ small_receive_buffers(Port) ->
     _ = [inet:setopts(P, [{recbuf, 8192}])
          || P <- erlang:ports(),
             erlang:port_info(P, name) =:= {name, "tcp_inet"},
-            {ok, {_, Port}} <- [inet:sockname(P)],
+            {ok, {_, Bound}} <- [inet:sockname(P)],
+            Bound =:= Port,
             {ok, [{active, false}]} <- [inet:getopts(P, [active])]],
     nil.

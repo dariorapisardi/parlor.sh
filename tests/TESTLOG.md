@@ -656,7 +656,10 @@ production.
 
 Still to do before the port can replace Node: restarts without refused connections (mist cannot
 take systemd's socket), a build that runs on mars (Debian 12 ships OTP 25; this needs 27+), the
-naive-agent gate against a Gleam instance, then the cutover itself.
+naive-agent gate against a Gleam instance, then the cutover itself. One known difference: Node
+stops counting a held poll the moment its client disconnects; the port counts it until the wait
+runs out (at most MAX_WAIT), so an agent that drops and re-polls fast reaches
+MAX_WAITERS_PER_CLIENT sooner.
 
 ## Not tested yet
 
