@@ -7,9 +7,10 @@ what the served pages promise; nothing about how a server is built.
 
 Two tiers:
   contract  runs against any server, production included: shapes, status codes, headers, auth,
-            content negotiation, long-poll semantics, close, purge. It creates 11 rooms (topic
-            "[conformance] ...") and purges every one at the end. parlor.sh allows 20 per client
-            per hour (RATE_CREATE), so against it, one run per hour.
+            content negotiation, long-poll semantics, close, purge, aliases. It creates 12 rooms
+            (topic "[conformance] ...") and 3 aliases, and purges or deletes every one at the end.
+            parlor.sh allows 20 creations per client per hour (RATE_CREATE), so against it, one
+            run per hour.
   handoff   (with --then) one implementation writes rooms, another serves them from the same data
             directory, then the first again: rooms and tokens have to outlive a change of server.
   limits    starts its own servers with small limits (MAX_BODY=100, RATE_POST=2, a TTL of seconds,
@@ -154,7 +155,7 @@ class Ctx:
     """What a check gets: the server, helpers, and rooms it creates (all purged at the end)."""
 
     def __init__(self, srv, runner=None):
-        self.srv, self.runner, self.created, self._main = srv, runner, [], None
+        self.srv, self.runner, self.created, self.aliases, self._main = srv, runner, [], [], None
 
     def create(self, fields=None, via='form'):
         fields = {'handle': 'host', 'topic': TOPIC, **(fields or {})}
@@ -204,7 +205,20 @@ class Ctx:
         ok(m, 'room page does not state "max N bytes per message"')
         return int(m.group(1))
 
+    def alias(self, room_url):
+        r = self.srv.form('/a', {'room': room_url})
+        eq(r.status, 201, f'alias status: {r.text[:200]}')
+        a = r.json()
+        a['id'] = a['alias_url'].rsplit('/', 1)[1]
+        self.aliases.append((a['id'], a['token']))
+        return a
+
     def cleanup(self):
+        for aid, tok in self.aliases:
+            try:
+                self.srv.post(f'/a/{aid}/delete', token=tok)
+            except Exception:
+                pass
         for rid, tok in self.created:
             try:
                 self.srv.post(f'/r/{rid}/purge', token=tok)
@@ -677,6 +691,63 @@ def purge(c):
     is_error(c.say(room['id'], room['token'], 'x'), 410, 'post after purge')
 
 
+# ---- aliases -------------------------------------------------------------------------------
+
+@check('contract')
+def alias_redirects(c):
+    """An alias answers GET with a 303 to its room, and a body that names the room"""
+    room = c.spare()
+    a = c.alias(room['room_url'])
+    eq(a['room_url'], room['room_url'], 'room_url in the create response')
+    ok(a['token'] and a['next'], 'no token or next hint')
+    for accept in ('text/markdown', 'text/html'):
+        r = c.srv.get(f'/a/{a["id"]}', headers={'Accept': accept})
+        eq(r.status, 303, f'{accept}: status')
+        eq(r.header('location'), room['room_url'], f'{accept}: Location')
+        ok(room['room_url'] in r.text, f'{accept}: body does not name the room')
+        ok('noindex' in (r.header('x-robots-tag') or ''), f'{accept}: no X-Robots-Tag: noindex')
+        security_headers(r, f'{accept} alias')
+    eq(c.srv.req('HEAD', f'/a/{a["id"]}').status, 303, 'HEAD')
+
+
+@check('contract')
+def alias_moves_only_with_its_token(c):
+    """Pointing an alias at another room needs the alias token: none, a wrong one, or a room token is a 401"""
+    m, other = c.main(), c.create()
+    a = c.alias(other['room_url'])
+    target = f'{c.srv.base}/r/{m["id"]}'
+    for what, tok in (('no token', None), ('wrong token', 'x' * 32), ('the room host\'s token', other['token'])):
+        is_error(c.srv.form(f'/a/{a["id"]}', {'room': target}, token=tok), 401, what)
+    eq(c.srv.get(f'/a/{a["id"]}').header('location'), other['room_url'], 'Location after refused moves')
+    r = c.srv.post(f'/a/{a["id"]}', target + '/messages?since=0', token=a['token'])
+    eq(r.status, 200, f'move with the token (room URL as plain text): {r.text[:200]}')
+    eq(r.json().get('room_url'), target, 'room_url in the move response')
+    eq(c.srv.get(f'/a/{a["id"]}').header('location'), target, 'Location after the move')
+
+
+@check('contract')
+def alias_targets_only_rooms_here(c):
+    """An alias points only at an existing room of this server; anything else is a 400"""
+    for what, room in (('no room', ''), ('not a room URL', 'https://example.invalid/'),
+                       ('a room that does not exist', f'{c.srv.base}/r/AAAAAAAAAAAAAAAA'),
+                       ('a path', '../../etc/passwd')):
+        is_error(c.srv.form('/a', {'room': room}), 400, what)
+
+
+@check('contract')
+def alias_urls_resolve_nothing_else(c):
+    """Malformed or unknown aliases are 404, and an alias has no sub-resources"""
+    a = c.alias(c.spare()['room_url'])
+    for path in ('/a/short', '/a/AAAAAAAAAAAAAAAA', '/a/..%2F..%2Fetc%2Fpasswd', f'/a/{a["id"]}/messages'):
+        r = c.srv.get(path)
+        is_error(r, 404, path)
+        ok('root:' not in r.text, f'{path} leaked a file')
+    is_error(c.srv.form(f'/a/{a["id"]}/join', {'handle': 'x'}), 404, 'join through an alias')
+    is_error(c.srv.post(f'/a/{a["id"]}/delete', token='x' * 32), 401, 'delete with a wrong token')
+    eq(c.srv.post(f'/a/{a["id"]}/delete', token=a['token']).json(), {'ok': True}, 'delete')
+    is_error(c.srv.get(f'/a/{a["id"]}'), 404, 'a deleted alias')
+
+
 # ============================================================================================
 # limits tier: own servers, small limits (environment variable names are part of the contract)
 # ============================================================================================
@@ -870,6 +941,57 @@ def shutdown_answers_held_polls(c):
     ok('r' in box, 'the held wait raised instead of being answered')
     eq(box['r'].status, 200, 'held wait at shutdown')
     ok(box['r'].elapsed < 5, f'answered after {box["r"].elapsed:.2f} s')
+
+
+@check('limits', {'TTL': '2', 'TTL_MIN': '1', 'SWEEP_EVERY': '1'})
+def alias_outlives_its_room_by_ttl(c):
+    """An alias whose room is gone says so, and is deleted TTL later unless moved first"""
+    room = c.create()
+    keep = c.alias(room['room_url'])
+    drop = c.alias(room['room_url'])
+    for _ in range(3):
+        time.sleep(1)
+        eq(c.srv.get(f'/a/{keep["id"]}').status, 303, 'alias while its room lives')
+        c.read(room['id'], room['token'], since=0)
+    time.sleep(3.5)                           # the room expires
+    r = c.srv.get(f'/a/{keep["id"]}')
+    is_error(r, 404, 'alias of a deleted room')
+    ok('no longer exists' in r.json()['error'], f'the error does not say the room is gone: {r.text[:200]}')
+    fresh = c.create({'ttl': '60'})
+    eq(c.srv.form(f'/a/{keep["id"]}', {'room': fresh['room_url']}, token=keep['token']).status, 200, 'moving an orphaned alias')
+    time.sleep(3)                             # past TTL since the room went
+    eq(c.srv.get(f'/a/{keep["id"]}').header('location'), fresh['room_url'], 'the moved alias')
+    eq(c.srv.get(f'/a/{drop["id"]}').json().get('error'), 'no such alias', 'the alias nobody moved')
+
+
+@check('limits', {})
+def alias_survives_restart(c):
+    """Aliases and their tokens survive a restart"""
+    room, other = c.create(), c.create()
+    a = c.alias(room['room_url'])
+    c.runner.restart()
+    eq(c.srv.get(f'/a/{a["id"]}').header('location'), room['room_url'], 'alias after the restart')
+    eq(c.srv.form(f'/a/{a["id"]}', {'room': other['room_url']}, token=a['token']).status, 200, 'alias token after the restart')
+    eq(c.srv.get(f'/r/{room["id"]}').status, 200, 'room next to the aliases directory')
+
+
+@check('limits', {'MAX_ALIASES': '1'})
+def max_aliases(c):
+    """At MAX_ALIASES, creating an alias is a 503"""
+    room = c.create()
+    c.alias(room['room_url'])
+    is_error(c.srv.form('/a', {'room': room['room_url']}), 503, 'second alias on the server')
+
+
+@check('limits', {'RATE_CREATE': '2'})
+def rate_create_counts_aliases(c):
+    """RATE_CREATE counts rooms and aliases together; a room that does not exist is refused first"""
+    room = c.create()
+    is_error(c.srv.form('/a', {'room': f'{c.srv.base}/r/AAAAAAAAAAAAAAAA'}), 400, 'alias of a missing room')
+    c.alias(room['room_url'])
+    r = c.srv.form('/a', {'room': room['room_url']})
+    is_error(r, 429, 'third creation in an hour')
+    ok((r.header('retry-after') or '').isdigit(), 'no numeric Retry-After')
 
 
 # ---- handoff: another implementation on the same data directory -----------------------------

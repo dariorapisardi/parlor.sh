@@ -13,6 +13,8 @@
 #   POST $URL/messages          post (body = text; ?to=HANDLE, ?reply_to=ID)
 #   GET  $URL/logs              the whole conversation, no token needed
 #   POST $URL/leave | close | purge                 (close and purge: host only)
+#   POST $BASE/a                alias a room (room=URL) -> {alias_url, token}
+#   GET  $ALIAS                 303 to the room it points at; POST $ALIAS (room=URL) moves it
 # Calls that act as you carry the header "Authorization: Bearer TOKEN".
 #
 # Two things this script does so that you do not have to:
@@ -51,6 +53,10 @@ usage:
   parlor close URL [TEXT]        host only: end the room, optionally with a last message
                                  (accepted even when the room is full; e.g. "continued at URL")
   parlor purge URL               host only: delete the conversation, leave a notice
+  parlor alias ROOM_URL          a stable URL for the room, to publish; prints it
+  parlor alias ALIAS_URL ROOM_URL
+                                 point your alias at another room (e.g. after close)
+  parlor alias ALIAS_URL --delete
   --as HANDLE                    act as one of several identities you hold in a room
 environment: PARLOR_URL (service, default https://parlor.sh), PARLOR_STATE (where tokens live), PARLOR_AS
 USAGE
@@ -99,6 +105,14 @@ load() { # sets URL, DIR, TOKEN, CURSOR, HANDLE. With several identities in one 
 
 as_me() { curl -sS -H "Authorization: Bearer $TOKEN" "$@"; }
 
+# An alias URL answers 303 to its room; everything but the alias itself happens at the room URL.
+resolve() {
+  case "$1" in
+    */a/*) curl -sS -o /dev/null -w '%{redirect_url}' "$1" | grep . || die "$(curl -sS "$1")" ;;
+    *) echo "${1%/}" ;;
+  esac
+}
+
 # One read. $1 = seconds the server may hold the request open when nothing is new.
 # Sets BODY (text transcript), STATUS (open|closed) and advances the cursor.
 fetch() {
@@ -144,7 +158,7 @@ case "$command" in
     ;;
 
   join)
-    URL="${1%/}"; [ -n "$URL" ] || usage; shift
+    [ -n "${1:-}" ] || usage; URL="$(resolve "$1")"; shift
     fields=(-X POST)
     [ "${1:-}" = "--handle" ] && fields=(--data-urlencode "handle=$2")
     response="$(curl -sS "${fields[@]}" "$URL/join")" || die "cannot reach $URL"
@@ -188,8 +202,8 @@ case "$command" in
     printf '%s' "$text" | as_me -H "Content-Type: text/plain" "${query[@]}" --data-binary @- "$URL/messages"
     ;;
 
-  log)   URL="${1%/}"; [ -n "$URL" ] || usage; curl -sS "$URL/logs?format=text" ;;
-  who)   URL="${1%/}"; [ -n "$URL" ] || usage; curl -sS "$URL/participants" ;;
+  log)   [ -n "${1:-}" ] || usage; URL="$(resolve "$1")"; curl -sS "$URL/logs?format=text" ;;
+  who)   [ -n "${1:-}" ] || usage; URL="$(resolve "$1")"; curl -sS "$URL/participants" ;;
   leave) load "${1:-}"; as_me -X POST "$URL/leave" ;;
   close)
     load "${1:-}"; text="${2:-}"
@@ -197,5 +211,30 @@ case "$command" in
     else as_me -X POST "$URL/close"; fi
     ;;
   purge) load "${1:-}"; as_me -X POST "$URL/purge" ;;
+
+  alias)
+    # The alias token is kept like a seat token, in $STATE/aliases/<alias id>/token.
+    [ -n "${1:-}" ] || usage
+    case "$1" in
+      */a/*)
+        ALIAS="${1%/}"; dir="$STATE/aliases/$(basename "$ALIAS")"
+        [ -f "$dir/token" ] || die "no token for this alias in $dir"
+        TOKEN="$(cat "$dir/token")"
+        case "${2:-}" in
+          "") usage ;;
+          --delete) as_me -X POST "$ALIAS/delete" && rm -r "$dir" ;;
+          *) as_me --data-urlencode "room=$2" "$ALIAS" ;;
+        esac
+        ;;
+      *)
+        base="${1%%/r/*}"   # the alias lives on the room's own server
+        response="$(curl -sS --data-urlencode "room=${1%/}" "$base/a")" || die "cannot reach $base"
+        ALIAS="$(field alias_url "$response")"; [ -n "$ALIAS" ] || die "$response"
+        dir="$STATE/aliases/$(basename "$ALIAS")"
+        (umask 077; mkdir -p "$dir"; field token "$response" > "$dir/token")
+        echo "$ALIAS"
+        ;;
+    esac
+    ;;
   *) usage ;;
 esac

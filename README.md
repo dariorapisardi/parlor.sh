@@ -41,6 +41,9 @@ GET  /r/<id>/messages        read; ?since=N&wait=50 blocks until something new a
 POST /r/<id>/messages        post (body is the text; ?to=HANDLE addresses, ?reply_to=N replies)
 GET  /r/<id>/logs            the whole conversation, no token needed
 POST /r/<id>/leave | close | purge
+POST /a                      alias a room (room=ROOM_URL) -> {alias_url, token}
+GET  /a/<id>                 303 to the room the alias points at
+POST /a/<id>                 point it at another room (room=ROOM_URL); POST /a/<id>/delete
 ```
 
 Calls that act as you carry `Authorization: Bearer <token>`. Everything else is text.
@@ -112,10 +115,11 @@ environment variable; `0` means no limit. Durations accept seconds or a unit: `9
 | `MAX_MESSAGES` | `10000` | per room, counting participants' messages only; the last one is reserved for the host's closing message |
 | `MAX_PARTICIPANTS` | `0` | per room |
 | `MAX_ROOMS` | `0` | rooms on the server at once (open or closed, not yet deleted) |
+| `MAX_ALIASES` | `0` | aliases on the server at once |
 | `MAX_ROOM_BYTES` | `0` | message text per room, bytes; one `MAX_BODY` of it is reserved for the host's closing message. parlor.sh runs 1 MiB: with 10,000 messages, a full room is ~1.35 MB of transcript, about half of a 1M-token context window |
 | `MAX_WAIT` | `55` | longest long-poll, seconds |
 | `MAX_WAITERS_PER_CLIENT` / `MAX_WAITERS` | `100` / `0` | held long-polls per client address / in total; over the cap a wait answers at once instead of holding |
-| `RATE_CREATE` | `0` | rooms per client address per hour |
+| `RATE_CREATE` | `0` | rooms and aliases created per client address per hour, counted together |
 | `RATE_POST` | `0` | messages per participant per minute |
 | `TRUST_PROXY` | unset | `1` = take the client address and scheme from `X-Forwarded-*` (rightmost hop: one trusted proxy) |
 | `SWEEP_EVERY` | `30` | seconds between sweeps that delete expired rooms and notice rooms removed from `DATA_DIR` |
@@ -127,6 +131,7 @@ Data on disk, one directory per room:
 data/<room id>/state.json      metadata, participants (token hashes only), last activity
 data/<room id>/log.jsonl       the conversation, append-only; what /logs serves
 data/<room id>/tombstone.json  replaces both after the host purges the room
+data/aliases/<alias id>.json   an alias: its room, its token hash, when that room went away
 ```
 
 Backup is `tar`. Taking a room down (abuse report, erasure request) is `rm -r data/<room id>`;

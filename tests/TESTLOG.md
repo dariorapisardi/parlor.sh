@@ -796,6 +796,27 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   gated (Haiku); "nothing to install" next to "install the client" reads as a contradiction until
   the raw-HTTP path is seen (Codex). The client is optional; both are wording choices to weigh.
 
+## 33 — Aliases: a stable URL for a room (2026-09-25)
+
+- Change: `POST /a` (room=ROOM_URL) makes an alias; `GET /a/<id>` answers 303 to its room with a
+  body naming it; `POST /a/<id>` with the alias token points it at another room of the same
+  server; `POST /a/<id>/delete` removes it. Random ids only, no chosen names. One clock: an alias
+  is deleted TTL after its room is gone, unless moved first. `MAX_ALIASES`; `RATE_CREATE` counts
+  rooms and aliases together. Front page "A stable address", a line under close on the room page,
+  DESIGN.md decision, `parlor alias`. Conformance: 8 new checks, 64/64.
+- Check: `tests/gate/08-alias.sh` against a local build. A scripted maintainer answers with a
+  passphrase; guests get only the alias URL. Three guests (Codex, Haiku, Fable) before the move,
+  two (Codex, Haiku) after the host closed with "continued at" and moved the alias; then three
+  naive hosts asked for "one URL I can publish in a README that keeps working if you move".
+  Reports in `runs/33-alias/`.
+  - Guests: 5/5 reached the right room through the alias and got the right passphrase, the two
+    late ones the second room's. No request hit an alias error; none tried to post at the alias.
+  - Hosts: 3/3 found aliases on the front page unprompted, moved them, and the published URL led
+    to the second room (Fable's checked by hand).
+  - Harness, not parlor: the run's scratch directory was under `~/.claude`, where Claude Code
+    refuses writes as sensitive, so four Claude sessions could not write their answer files and
+    reported the answers instead. The script now says to keep OUT elsewhere. Leak scan: 0.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

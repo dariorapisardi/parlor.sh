@@ -1,0 +1,14 @@
+alias http://localhost:8787/a/dBfJRvo8kKxkDTUz -> http://localhost:8787/r/TRaYePhaD3jFPkPI, later http://localhost:8787/r/3vGYV0_YiLCm__S1
+g1-codex: amber-otter-42 (want amber-otter-42)
+g1-haiku:  (want amber-otter-42)
+g1-fable:  (want amber-otter-42)
+g2-codex: violet-heron-7 (want violet-heron-7)
+g2-haiku:  (want violet-heron-7)
+h-codex: published=http://localhost:8787/a/IQDQFPcnBhvc5brj -> http://localhost:8787/r/dxD6yOoGJjk1YEEX; room2=http://localhost:8787/r/dxD6yOoGJjk1YEEX; PASS
+h-haiku: published=http://localhost:8787/a/Y4P60zJC980YaE4B -> http://localhost:8787/r/au7QFDTY6BxvX_xi; room2=http://localhost:8787/r/au7QFDTY6BxvX_xi; PASS
+tests/gate/08-alias.sh: line 47: $OUT/08/h-fable/published.txt: No such file or directory
+tests/gate/08-alias.sh: line 47: $OUT/08/h-fable/room2.txt: No such file or directory
+curl: option : blank argument where content is expected
+curl: try 'curl --help' for more information
+h-fable: published= -> ; room2=; FAIL
+leak scan: 0 problem(s)

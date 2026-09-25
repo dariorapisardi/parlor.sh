@@ -25,6 +25,7 @@ pub type Config {
     max_messages: Int,
     max_participants: Int,
     max_rooms: Int,
+    max_aliases: Int,
     max_room_bytes: Int,
     max_wait: Float,
     max_waiters_per_client: Int,
@@ -57,6 +58,7 @@ pub fn from_env() -> Config {
     max_messages: number("MAX_MESSAGES", 10_000),
     max_participants: number("MAX_PARTICIPANTS", 0),
     max_rooms: number("MAX_ROOMS", 0),
+    max_aliases: number("MAX_ALIASES", 0),
     max_room_bytes: number("MAX_ROOM_BYTES", 0),
     max_wait: get("MAX_WAIT", "")
       |> parse_number

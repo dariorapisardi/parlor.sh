@@ -19,6 +19,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import mist.{type Connection, type ResponseData}
+import parlor/alias
 import parlor/clock
 import parlor/config.{type Config}
 import parlor/fail.{type HttpError}
@@ -284,6 +285,8 @@ fn route(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
       let action = list.first(rest) |> option.from_result
       in_room(web, c, id, action, method)
     }
+    ["a"], Post -> alias_create(web, c)
+    ["a", id, ..rest], _ -> in_alias(web, c, id, rest, method)
     _, _ -> Error(not_found(c))
   }
 }
@@ -487,6 +490,158 @@ fn create(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
     ]),
     [],
   ))
+}
+
+// ---- aliases -------------------------------------------------------------------------------
+
+// `room` as a field (form, JSON, query), or the whole body when it is plain text.
+fn alias_target(c: Ctx) -> Result(String, HttpError) {
+  use raw <- result.try(
+    c.body |> result.replace_error(fail.bare(413, "body too large")),
+  )
+  use f <- result.try(fields.parse(raw, content_type(c), c.query, form: True))
+  let given = case fields.text(f, "room") {
+    "" ->
+      case f.json || string.contains(content_type(c), "x-www-form-urlencoded") {
+        True -> ""
+        False -> raw
+      }
+    room -> room
+  }
+  let id = alias.room_id(given)
+  case is_room_id(id) {
+    True -> Ok(id)
+    False ->
+      Error(fail.new(
+        400,
+        "not a room URL",
+        "Send the room URL as `room`, e.g. curl -d room=" <> c.base <> "/r/ID",
+      ))
+  }
+}
+
+fn alias_create(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
+  use room_id <- result.try(alias_target(c))
+  use #(id, token) <- result.try(
+    actor_call(web.registry, 5000, registry.AliasCreate(c.client, room_id, _))
+    |> result.replace_error(fail.bare(500, "internal error"))
+    |> result.flatten,
+  )
+  let alias_url = c.base <> "/a/" <> id
+  Ok(
+    send_json(
+      201,
+      json.object([
+        #("alias_url", json.string(alias_url)),
+        #("room_url", json.string(c.base <> "/r/" <> room_id)),
+        #("token", json.string(token)),
+        #("ttl", json.int(web.config.ttl)),
+        #(
+          "next",
+          json.string(
+            "Publish the alias URL: fetching it redirects to the room. When you move to another room, point the alias there with your token: POST "
+            <> alias_url
+            <> " with room=NEW_ROOM_URL. It is deleted "
+            <> config.human_duration(web.config.ttl)
+            <> " after its room is gone, unless pointed at another room first.",
+          ),
+        ),
+      ]),
+      [noindex],
+    ),
+  )
+}
+
+fn in_alias(
+  web: Web,
+  c: Ctx,
+  id: String,
+  rest: List(String),
+  method: http.Method,
+) -> Result(Response(ResponseData), HttpError) {
+  let none = fail.bare(404, "no such alias") |> fail.with_headers([noindex])
+  use <- bool_guard(!is_room_id(id), none)
+  let alias_url = c.base <> "/a/" <> id
+  let owned = fn(result) {
+    result
+    |> result.replace_error(fail.bare(500, "internal error"))
+    |> result.flatten
+    |> result.map_error(fail.with_headers(_, [noindex]))
+  }
+  case rest, method {
+    [], Get -> {
+      use #(room_id, exists) <- result.try(
+        actor_call(web.registry, 5000, registry.AliasGet(id, _))
+        |> result.unwrap(None)
+        |> option.to_result(none),
+      )
+      let room_url = c.base <> "/r/" <> room_id
+      case exists {
+        False ->
+          Error(
+            fail.new(
+              404,
+              "the room this alias points to no longer exists",
+              "Only whoever holds the alias token can point it at another room. Whoever gave you this URL may know where the conversation went.",
+            )
+            |> fail.with_headers([noindex]),
+          )
+        True ->
+          Ok(
+            send(
+              303,
+              "This alias points to the room "
+                <> room_url
+                <> "\n\nFetch that URL: it explains how to join. Join, read and post there, not here: tokens belong to the room, and this alias may point at another room later.\n",
+              "text/markdown",
+              [#("location", room_url), noindex],
+            ),
+          )
+      }
+    }
+    [], Post -> {
+      use room_id <- result.try(alias_target(c))
+      use Nil <- result.try(
+        owned(
+          actor_call(web.registry, 5000, registry.AliasSet(
+            id,
+            c.token,
+            room_id,
+            _,
+          )),
+        ),
+      )
+      Ok(
+        send_json(
+          200,
+          json.object([
+            #("alias_url", json.string(alias_url)),
+            #("room_url", json.string(c.base <> "/r/" <> room_id)),
+          ]),
+          [noindex],
+        ),
+      )
+    }
+    ["delete"], Post -> {
+      use Nil <- result.try(
+        owned(
+          actor_call(web.registry, 5000, registry.AliasDelete(id, c.token, _)),
+        ),
+      )
+      Ok(send_json(200, json.object([#("ok", json.bool(True))]), [noindex]))
+    }
+    _, _ ->
+      Error(
+        fail.new(
+          404,
+          "not found",
+          "An alias only redirects: GET "
+            <> alias_url
+            <> " and use the room URL it answers with.",
+        )
+        |> fail.with_headers([noindex]),
+      )
+  }
 }
 
 fn in_room(

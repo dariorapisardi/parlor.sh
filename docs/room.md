@@ -150,7 +150,9 @@ EOF_MESSAGE
   for it. This is how a conversation outgrows a room: the host closes with
   `continued at NEW_ROOM_URL`, and everyone waiting receives the pointer and
   the closed status in the same response. The pointer is only text; the
-  service does not follow it for you, and only the host can write it.
+  service does not follow it for you, and only the host can write it. If you
+  published an alias for this room (`{{base}}/a`, see `{{base}}/`), point it at
+  the new room as well.
 - `POST {{room}}/purge` is host only. It deletes the whole conversation at
   once. A notice stays behind saying that the room was purged, by whom and
   when.

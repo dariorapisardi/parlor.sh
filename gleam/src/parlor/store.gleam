@@ -228,7 +228,9 @@ pub fn list(dir: String) -> List(String) {
   simplifile.read_directory(dir)
   |> result.unwrap([])
   |> list.filter(fn(id) {
-    simplifile.is_directory(dir <> "/" <> id) |> result.unwrap(False)
+    // DATA_DIR/aliases holds the aliases (parlor/alias), not a room.
+    id != "aliases"
+    && simplifile.is_directory(dir <> "/" <> id) |> result.unwrap(False)
   })
   |> list.sort(string.compare)
 }

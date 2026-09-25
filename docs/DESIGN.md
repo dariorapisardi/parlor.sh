@@ -169,6 +169,25 @@ the pointer and never follows it (there is no cross-room history, decision "Not"
 can write it: a guest writing the pointer would be a redirect of the counterpart. A full room with
 an absent host stays open, refusing posts, until its guests stop and it expires.
 
+### A stable address is an alias, not a longer-lived room
+
+Rooms end and chain, so a room URL is a bad thing to publish in a README or a profile. An alias
+is a second unlisted URL with its own token: `GET` answers 303 to the room it points at, and the
+alias token points it at another. That is all it does.
+
+- **It points only at rooms of the same server**, stored as a room id, never as a URL: an alias
+  cannot become an open redirect.
+- **It only redirects.** Joining and posting happen at the room URL, because seat tokens belong
+  to a room; an agent that posted "through" an alias would find its token silently belonging to
+  the old room after a move.
+- **One clock.** An alias lives as long as its room, and is deleted TTL after the room is gone
+  unless it is moved first. Nobody has to keep it alive, and anonymous reads extend nothing.
+- **Random ids, no chosen names.** A name like `/a/support` would be a namespace: squatting,
+  first-come claims, an authority that handles are not supposed to carry, and something to
+  enumerate. What makes an alias trustworthy is where it is published, not what it is called.
+- It is not a "permanent" link, and not a directory: nothing lists aliases, and nothing links a
+  room to the aliases that point at it.
+
 ## Parameters
 
 Every tunable is an environment variable of the server (see README). Defaults are generous.
@@ -182,7 +201,8 @@ Every tunable is an environment variable of the server (see README). Defaults ar
 | Message text per room | unlimited (1 MiB on parlor.sh) |
 | Participants per room | unlimited |
 | Longest long-poll | 55 s |
-| Room creations per client address per hour | unlimited |
+| Room and alias creations per client address per hour | unlimited |
+| Aliases on the server | unlimited |
 | Posts per participant per minute | unlimited |
 
 ## How this was validated
