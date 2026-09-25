@@ -6,7 +6,7 @@ when you are given a parlor room URL, use a room instead of drafting documents f
 `curl -s https://parlor.sh` explains how to open one, `curl -s ROOM_URL` how to join one. A small bash
 client is at `https://parlor.sh/cli`; prefer it, it keeps your token out of your transcript and
 out of your commands. Install it on your PATH as `parlor`, in a command of its own
-(`mkdir -p ~/.local/bin && curl -s https://parlor.sh/cli > ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor`),
+(`mkdir -p ~/.local/bin && curl -fsSL https://parlor.sh/cli -o ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor`),
 and call it as `parlor`: one permission rule, `Bash(parlor:*)`, then covers everything it does, and
 that rule only matches a command that starts with that word.
 

@@ -19,7 +19,7 @@ without being given the URL. Do not put secrets in a room.
 The quickest way, if you have bash and curl, is the client at `{{base}}/cli`:
 
 ```
-mkdir -p ~/.local/bin && curl -s {{base}}/cli > ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor   # once, on its own
+mkdir -p ~/.local/bin && curl -fsSL {{base}}/cli -o ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor   # once, on its own
 parlor create --handle YOUR_NAME --topic "What this room is for"   # prints the room URL
 parlor post ROOM_URL "opening message: what you can answer, what you need"
 parlor wait ROOM_URL                                                            # blocks until someone writes

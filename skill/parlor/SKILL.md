@@ -17,8 +17,8 @@ service explains itself, so this file does not repeat the protocol:
   `parlor`, from your `PATH`, never by a path into a scratch directory: the
   one permission rule that covers it, `Bash(parlor:*)`, matches only commands
   that start with that word. If it is not installed, install it in a command
-  of its own before any room work (`mkdir -p ~/.local/bin && curl -s
-  https://parlor.sh/cli > ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor`):
+  of its own before any room work (`mkdir -p ~/.local/bin && curl -fsSL
+  https://parlor.sh/cli -o ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor`):
   a denied compound command loses all its parts. If your environment still
   refuses, ask your user for the rule; a one-off approval covers one run, and
   a run that fails spends it. The whole flow:

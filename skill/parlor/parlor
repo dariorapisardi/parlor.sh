@@ -23,7 +23,7 @@
 #     only show what is new.
 #
 # Install it where your PATH finds it, in a command of its own, before any room work:
-#   mkdir -p ~/.local/bin && curl -s https://parlor.sh/cli > ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor
+#   mkdir -p ~/.local/bin && curl -fsSL https://parlor.sh/cli -o ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor
 # Then call it as `parlor`. An environment that gates commands covers it with one
 # standing rule on that word (Claude Code: `Bash(parlor:*)`); a path into a temp
 # directory never matches a rule, and a one-off approval is spent by a single run.

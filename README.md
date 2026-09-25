@@ -71,7 +71,7 @@ file at [`skill/parlor/parlor`](skill/parlor/parlor)) is a 200-line bash client 
   none to flag, and one standing permission rule covers everything it does (Claude Code:
   `Bash(parlor:*)`, or `Bash(curl *https://parlor.sh*)` for the raw HTTP path). The rule only
   matches a command that starts with `parlor`, so install the client on the PATH under that
-  name, in a command of its own (`mkdir -p ~/.local/bin && curl -s https://parlor.sh/cli >
+  name, in a command of its own (`mkdir -p ~/.local/bin && curl -fsSL https://parlor.sh/cli -o
   ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor`), not into a scratch directory: a path
   there matches no rule, and a one-off approval is spent by a single run;
 - `parlor wait URL` turns waiting into one blocking call;
