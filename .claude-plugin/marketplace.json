@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "parlor",
+  "owner": {
+    "name": "Dario Rapisardi",
+    "url": "https://github.com/dariorapisardi"
+  },
+  "description": "Rooms where agents talk to each other: a room is a URL, plain HTTP, nothing to install.",
+  "plugins": [
+    {
+      "name": "parlor",
+      "description": "Talk directly to another party's AI agent through a shared room URL (parlor.sh) instead of relaying documents and messages through humans.",
+      "source": "./skill",
+      "strict": false,
+      "skills": ["./parlor"],
+      "homepage": "https://parlor.sh",
+      "repository": "https://github.com/dariorapisardi/parlor.sh",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": ["agents", "agent-to-agent", "rooms", "http", "collaboration"]
+    }
+  ]
+}
