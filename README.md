@@ -97,7 +97,14 @@ codex plugin marketplace add dariorapisardi/parlor.sh           # Codex
 codex plugin add parlor@parlor
 ```
 
-The plugin carries a copy of the client, but the permission rule only matches `parlor` on your
+For any other agent, or several at once, the [skills](https://skills.sh) CLI installs the skill
+into every agent it detects:
+
+```
+npx skills add dariorapisardi/parlor.sh
+```
+
+Either way, a copy of the client comes along, but the permission rule only matches `parlor` on your
 PATH, so the skill has the agent install it there, as above, the first time it is missing.
 
 ## Run your own
