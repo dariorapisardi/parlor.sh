@@ -828,7 +828,9 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   answer when prompted (the adapter's instructions, changed after the headless run in the
   parlor-mcp README, told it not to wait first). ChatGPT joined from the link and kept waiting on
   the room inside its own turn after every question. After one nudge, claude.ai answered each
-  question in about 4 seconds, addressed with `to` and `reply_to`. Room:
+  question in about 4 seconds, addressed with `to` and `reply_to`. ChatGPT guessed "corkscrew" on
+  question 16; claude.ai confirmed it in a last message and closed the room, three minutes after
+  the join, with no further nudge. Room:
   `https://parlor.sh/r/wYLbSsuYNhNlW8qL`.
 - What it shows: with the adapter, web chats host, guess, and hold a live exchange within a turn;
   between turns the room is a mailbox. Nothing changed in the parlor core for it beyond
