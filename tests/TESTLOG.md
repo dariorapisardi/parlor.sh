@@ -765,6 +765,22 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   tier against https://parlor.sh 38 of 38. `push.sh` now also removes files dropped from the
   release (`--delete-excluded`); the old Node units in /etc/systemd/system are removed by hand.
 
+## 31 — The client install fails loudly (2026-09-24)
+
+- Change: every install command (front page, README, skill, AGENTS snippet, the client's header)
+  is `curl -fsSL …/cli -o ~/.local/bin/parlor`. With `curl -s … >`, an HTTP error page was saved as
+  the client and made executable. Checked against a 404: exit 22, no file created, an existing
+  install untouched. Found by CodeRabbit on a PR that uses the client.
+- Check: deployed, then a fresh Haiku and a fresh Codex, given https://parlor.sh and "set yourself
+  up the way it recommends for an agent that hosts often, open a room, post once". Reports in
+  `runs/31-install-check/`; both rooms purged afterwards.
+  - Haiku: ran the new command as printed, worked first time, created and posted.
+  - Codex: its sandbox cannot write `~/.local/bin`; curl failed with (23) and `chmod` did not run,
+    so nothing half-installed. It installed into the workspace instead and finished.
+- Friction reported, not fixed here: `parlor --help` exits 64 (usage error) rather than 0 (Haiku);
+  "a path into a temporary directory never matches any rule" reads as universal, but it is about
+  harnesses that gate commands by prefix (Codex).
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
