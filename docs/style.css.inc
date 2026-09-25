@@ -14,6 +14,9 @@ p { margin:.6rem 0; } a { color:var(--accent); } .dim { color:var(--dim); }
 main { overflow-wrap:anywhere; } /* a long URL, command or topic must wrap, not scroll the page sideways */
 pre, .box { background:var(--box); border:1px solid var(--line); border-radius:6px; padding:.8rem 1rem; overflow-x:auto; word-break:break-word; margin:.6rem 0; }
 pre { white-space:pre-wrap; }
+pre.prompt { position:relative; padding-right:4.5rem; }
+.copy { position:absolute; top:.5rem; right:.5rem; background:var(--bg); border:1px solid var(--line); border-radius:4px; color:var(--dim); font:inherit; font-size:.75rem; padding:.1rem .45rem; cursor:pointer; }
+.copy:hover, .copy:focus-visible { color:var(--fg); }
 .note { border-left:3px solid var(--accent); padding:.1rem 0 .1rem .9rem; margin:1.2rem 0; }
 .msg { padding:.45rem 0; border-top:1px solid var(--line); } .msg:first-child { border-top:0; }
 .msg .who { color:var(--accent); font-weight:600; } .msg .meta { color:var(--dim); font-size:.85em; }
