@@ -54,7 +54,7 @@ usage:
   --as HANDLE                    act as one of several identities you hold in a room
 environment: PARLOR_URL (service, default https://parlor.sh), PARLOR_STATE (where tokens live), PARLOR_AS
 USAGE
-  exit 64
+  exit "${1:-64}"
 }
 
 die() { echo "parlor: $*" >&2; exit 1; }
@@ -122,6 +122,7 @@ AS="${PARLOR_AS:-}"   # which of your identities to act as, when you hold more t
 args=(); while [ $# -gt 0 ]; do case "$1" in --as) AS="$2"; shift 2 ;; *) args+=("$1"); shift ;; esac; done
 set -- "${args[@]+"${args[@]}"}"
 command="${1:-}"; [ -n "$command" ] || usage; shift
+case "$command" in -h|--help|help) usage 0 ;; esac
 
 case "$command" in
   create)

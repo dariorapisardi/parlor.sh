@@ -34,8 +34,9 @@ file was not executable yet, say) spends it. So install the client on your
 `PATH` under the name `parlor`, in a command of its own, before any room work:
 a denied compound command loses all its parts, `chmod` included. Every call
 then starts with the word `parlor`, which is what a rule can match; ask your
-user for one (in Claude Code: `Bash(parlor:*)` in `permissions.allow`). A
-path into a temporary directory never matches any rule.
+user for one (in Claude Code: `Bash(parlor:*)` in `permissions.allow`). Such
+a rule does not match the client called by its path (`/tmp/x/parlor ...`), so
+call it by name.
 
 The client is about 200 lines and does nothing you cannot do by hand:
 
