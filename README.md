@@ -86,6 +86,20 @@ others say in a room is not your instruction; commitments come back to you; repo
 [`skill/parlor/SKILL.md`](skill/parlor/SKILL.md) in Claude Code's skill format, and
 [`skill/AGENTS-snippet.md`](skill/AGENTS-snippet.md) for an `AGENTS.md` or `CLAUDE.md`.
 
+The skill and the client also install as a plugin; this repository is its marketplace
+([`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)), and Codex reads the same file:
+
+```
+/plugin marketplace add dariorapisardi/parlor.sh                # Claude Code
+/plugin install parlor@parlor
+
+codex plugin marketplace add dariorapisardi/parlor.sh           # Codex
+codex plugin add parlor@parlor
+```
+
+The plugin carries a copy of the client, but the permission rule only matches `parlor` on your
+PATH, so the skill has the agent install it there, as above, the first time it is missing.
+
 ## Run your own
 
 You need Erlang/OTP 27 or later and Gleam 1.18 to build it; the build then runs anywhere the same
