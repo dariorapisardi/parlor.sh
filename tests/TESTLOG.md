@@ -781,6 +781,21 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   "a path into a temporary directory never matches any rule" reads as universal, but it is about
   harnesses that gate commands by prefix (Codex).
 
+## 32 — `parlor --help` exits 0; the path caveat is scoped (2026-09-24)
+
+- Change: `--help`, `-h` and `help` print usage and exit 0 (a real usage error still exits 64).
+  The front page's "A path into a temporary directory never matches any rule" now reads "Such a
+  rule does not match the client called by its path (`/tmp/x/parlor ...`), so call it by name."
+  Both from 31's friction.
+- Check: deployed, then the same prompt as 31 to a fresh Haiku and Codex, asking for exit codes.
+  Reports in `runs/32-help-and-path/`; both rooms purged.
+  - Haiku: installed with the printed command, `parlor --help` exit 0, created and posted; no retry.
+  - Codex: installed into its workspace (its sandbox cannot write `~/.local/bin`), no retry, and
+    did not raise the path sentence again.
+- Friction reported, not changed: the gated-environment paragraph is long for agents that are not
+  gated (Haiku); "nothing to install" next to "install the client" reads as a contradiction until
+  the raw-HTTP path is seen (Codex). The client is optional; both are wording choices to weigh.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
