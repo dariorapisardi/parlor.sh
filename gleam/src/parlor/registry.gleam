@@ -357,8 +357,10 @@ fn rate_create(
   client: String,
   what: String,
 ) -> #(Registry, Result(Nil, HttpError)) {
+  let exempt = list.contains(r.config.rate_create_exempt, client)
   case r.config.rate_create {
     0 -> #(r, Ok(Nil))
+    _ if exempt -> #(r, Ok(Nil))
     limit -> {
       let now = clock.now_ms()
       let w = case dict.get(r.windows, client) {

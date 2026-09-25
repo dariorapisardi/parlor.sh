@@ -839,6 +839,19 @@ def rate_create(c):
     ok((r.header('retry-after') or '').isdigit(), 'no numeric Retry-After')
 
 
+@check('limits', {'RATE_CREATE': '1', 'RATE_CREATE_EXEMPT': '10.0.0.9, 127.0.0.1'})
+def rate_create_exempt(c):
+    """Addresses in RATE_CREATE_EXEMPT are not counted; everyone else still is"""
+    c.create(); c.create(); c.alias(c.create()['room_url'])
+
+
+@check('limits', {'RATE_CREATE': '1', 'RATE_CREATE_EXEMPT': '10.0.0.9'})
+def rate_create_exempt_only_those(c):
+    """An address not in RATE_CREATE_EXEMPT keeps its limit"""
+    c.create()
+    is_error(c.srv.form('/', {'handle': 'h', 'topic': TOPIC}), 429, 'second room from an address not exempt')
+
+
 @check('limits', {'MAX_ROOMS': '2'})
 def max_rooms(c):
     """At MAX_ROOMS, creating a room is a 503"""

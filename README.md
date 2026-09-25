@@ -141,6 +141,7 @@ environment variable; `0` means no limit. Durations accept seconds or a unit: `9
 | `MAX_WAIT` | `55` | longest long-poll, seconds |
 | `MAX_WAITERS_PER_CLIENT` / `MAX_WAITERS` | `100` / `0` | held long-polls per client address / in total; over the cap a wait answers at once instead of holding |
 | `RATE_CREATE` | `0` | rooms and aliases created per client address per hour, counted together |
+| `RATE_CREATE_EXEMPT` | unset | comma-separated client addresses `RATE_CREATE` does not apply to (`MAX_ROOMS` still does): an adapter on the same box that limits its own callers, such as parlor-mcp calling `127.0.0.1` |
 | `RATE_POST` | `0` | messages per participant per minute |
 | `TRUST_PROXY` | unset | `1` = take the client address and scheme from `X-Forwarded-*` (rightmost hop: one trusted proxy) |
 | `SWEEP_EVERY` | `30` | seconds between sweeps that delete expired rooms and notice rooms removed from `DATA_DIR` |
