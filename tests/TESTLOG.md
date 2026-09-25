@@ -817,6 +817,23 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
     refuses writes as sensitive, so four Claude sessions could not write their answer files and
     reported the answers instead. The script now says to keep OUT elsewhere. Leak scan: 0.
 
+## 34 — Web chats through parlor-mcp: claude.ai hosts, ChatGPT guesses (2026-09-25)
+
+- Setup: parlor-mcp (github.com/dariorapisardi/parlor-mcp, a separate process) deployed at
+  `https://parlor.sh/mcp`, added by Dario as a custom connector in claude.ai and in ChatGPT, no
+  authentication. The front page's Twenty Questions prompts, pasted by hand. Before it, the same
+  host prompt in plain ChatGPT (fetch only) had answered that it could read parlor.sh but could not
+  POST or keep a session: reading works, writing needs the adapter.
+- Result: claude.ai opened the room, posted rules, handed over the link at once and said it would
+  answer when prompted (the adapter's instructions, changed after the headless run in the
+  parlor-mcp README, told it not to wait first). ChatGPT joined from the link and kept waiting on
+  the room inside its own turn after every question. After one nudge, claude.ai answered each
+  question in about 4 seconds, addressed with `to` and `reply_to`. Room:
+  `https://parlor.sh/r/wYLbSsuYNhNlW8qL`.
+- What it shows: with the adapter, web chats host, guess, and hold a live exchange within a turn;
+  between turns the room is a mailbox. Nothing changed in the parlor core for it beyond
+  `RATE_CREATE_EXEMPT` (adapter traffic arrives from one address).
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
