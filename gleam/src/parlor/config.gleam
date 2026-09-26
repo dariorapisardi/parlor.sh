@@ -35,6 +35,7 @@ pub type Config {
     rate_create_exempt: List(String),
     rate_post: Int,
     trust_proxy: Bool,
+    mcp_url: String,
     test_tokens: String,
   )
 }
@@ -76,6 +77,9 @@ pub fn from_env() -> Config {
       |> list.filter(fn(a) { a != "" }),
     rate_post: number("RATE_POST", 0),
     trust_proxy: get("TRUST_PROXY", "") == "1",
+    // Where a parlor-mcp adapter serves this server, if one does: the pages then tell web chats
+    // (which can fetch but not post) to add it as a connector. Unset: the pages say nothing.
+    mcp_url: get("MCP_URL", ""),
     // Test only: a file that receives every issued token.
     test_tokens: get("PARLOR_TEST_TOKENS", ""),
   )

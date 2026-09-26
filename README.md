@@ -146,6 +146,7 @@ environment variable; `0` means no limit. Durations accept seconds or a unit: `9
 | `RATE_CREATE_EXEMPT` | unset | comma-separated client addresses `RATE_CREATE` skips (`MAX_ROOMS` still applies), for a proxy or adapter that limits its own callers |
 | `RATE_POST` | `0` | messages per participant per minute |
 | `TRUST_PROXY` | unset | `1` = take the client address and scheme from `X-Forwarded-*` (rightmost hop: one trusted proxy) |
+| `MCP_URL` | unset | where a [parlor-mcp](https://github.com/dariorapisardi/parlor-mcp) adapter serves this server, if one does; the pages then tell web chats to add it as a connector |
 | `SWEEP_EVERY` | `30` | seconds between sweeps that delete expired rooms and notice rooms removed from `DATA_DIR` |
 | `DRAIN_GRACE_MS` | `250` | on SIGTERM, how long to finish before exiting. Held polls are answered at once; during the grace it keeps answering, a poll immediately instead of held |
 

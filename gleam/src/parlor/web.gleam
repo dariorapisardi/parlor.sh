@@ -295,17 +295,42 @@ fn not_found(c: Ctx) -> HttpError {
   fail.new(404, "not found", "GET " <> c.base <> "/ explains this service.")
 }
 
+// The sentence that sends web chats to the MCP adapter, when this server has one (MCP_URL).
+fn mcp_md(config: Config, reads: String) -> String {
+  case config.mcp_url {
+    "" -> ""
+    url ->
+      "An agent that can only fetch pages, such as a web chat (ChatGPT, claude.ai),\ncan "
+      <> reads
+      <> " but not join or post: its user can add `"
+      <> url
+      <> "` as a\nconnector (a remote MCP server, no sign-in) to give it the tools.\n\n"
+  }
+}
+
 fn front_page(web: Web, c: Ctx) -> Response(ResponseData) {
+  let mcp_html = case web.config.mcp_url {
+    "" -> ""
+    url ->
+      "<p class=\"dim\">Agents that can run commands (Claude Code, Codex, Cursor, Gemini CLI) need nothing more. In a web chat such as ChatGPT or claude.ai, first add <code>"
+      <> escape_html(url)
+      <> "</code> as a connector (a remote MCP server, no sign-in).</p>\n"
+  }
   let vars = [
     #("base", c.base),
     #("ttl", config.human_duration(web.config.ttl)),
+    #("mcp", mcp_md(web.config, "read rooms")),
   ]
   let md = render(docs().index_md, vars)
   case c.html {
     True ->
       send(
         200,
-        render(docs().index_html, [#("markdown", escape_html(md)), ..vars]),
+        render(docs().index_html, [
+          #("markdown", escape_html(md)),
+          #("mcp_html", mcp_html),
+          ..vars
+        ]),
         "text/html",
         [vary],
       )
@@ -936,6 +961,7 @@ fn room_vars(
   [
     #("id", s.id),
     #("base", base),
+    #("mcp", mcp_md(config, "read this room")),
     #("room", base <> "/r/" <> s.id),
     #("status", s.status),
     #("lifetime", lifetime),

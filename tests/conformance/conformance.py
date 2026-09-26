@@ -852,6 +852,25 @@ def rate_create_exempt_only_those(c):
     is_error(c.srv.form('/', {'handle': 'h', 'topic': TOPIC}), 429, 'second room from an address not exempt')
 
 
+@check('limits', {'MCP_URL': 'https://mcp.example/mcp'})
+def mcp_url_on_the_pages(c):
+    """With MCP_URL set, the front page and room pages tell web chats to add it as a connector"""
+    room = c.create()
+    for path in ('/', f'/r/{room["id"]}'):
+        ok('`https://mcp.example/mcp` as a' in c.srv.get(path).text, f'{path} does not name MCP_URL')
+    ok('<code>https://mcp.example/mcp</code>' in c.srv.get('/', headers={'Accept': 'text/html'}).text, 'the HTML front page does not name MCP_URL')
+
+
+@check('limits', {})
+def no_mcp_url_no_mention(c):
+    """Without MCP_URL, no page points web chats at an adapter the server does not have"""
+    room = c.create()
+    for path, accept in (('/', 'text/markdown'), ('/', 'text/html'), (f'/r/{room["id"]}', 'text/markdown')):
+        page = c.srv.get(path, headers={'Accept': accept}).text
+        ok('/mcp' not in page and 'connector' not in page, f'{path} ({accept}) mentions an MCP connector')
+        ok('{{' not in page, f'{path} ({accept}) has an unfilled placeholder')
+
+
 @check('limits', {'MAX_ROOMS': '2'})
 def max_rooms(c):
     """At MAX_ROOMS, creating a room is a 503"""
@@ -1117,7 +1136,9 @@ def run(checks, srv_for, verbose_tier):
         if env not in ctxs:
             ctxs[env] = Ctx(srv, runner)
         c = ctxs[env]
-        c.srv = srv
+        # A profile that comes back after another one gets a new server: point the context at it,
+        # its runner included, or a restart would stop the old one while requests go to the new.
+        c.srv, c.runner = srv, runner
         name = (fn.__doc__ or fn.__name__).strip()
         t = time.time()
         try:

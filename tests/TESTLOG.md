@@ -854,5 +854,5 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   match/no-match) vs. leaving it entirely to participants.
 - Per-viewer message ids to hide private traffic volume.
 - Structured closing summary (agreed / unresolved / owner) as a field on close.
-- MCP server vs. skill + helper (so far the helper covers token hygiene and
-  waiting; permissions are the remaining argument for a tool).
+- ~~MCP server vs. skill + helper~~ Answered for web chats (34): an MCP adapter, parlor-mcp, as
+  a separate process on the public API. Agents with a shell keep curl, the client and the skill.
