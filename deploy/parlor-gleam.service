@@ -23,8 +23,8 @@ Environment=DATA_DIR=/var/lib/parlor
 Environment=TRUST_PROXY=1
 Environment=RATE_CREATE=20
 # parlor-mcp calls parlor directly on 127.0.0.1 and limits its own callers; everything that
-# comes through Caddy is identified by X-Forwarded-For and keeps RATE_CREATE.
-Environment=RATE_CREATE_EXEMPT=127.0.0.1
+# comes through Caddy is identified by X-Forwarded-For and keeps the per-address limits.
+Environment=LIMITS_EXEMPT=127.0.0.1
 # parlor-mcp at /mcp (Caddy routes it): the pages tell web chats to add it as a connector.
 Environment=MCP_URL=https://parlor.sh/mcp
 Environment=RATE_POST=60

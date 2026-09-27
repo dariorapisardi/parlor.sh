@@ -143,7 +143,7 @@ environment variable; `0` means no limit. Durations accept seconds or a unit: `9
 | `MAX_WAIT` | `55` | longest long-poll, seconds |
 | `MAX_WAITERS_PER_CLIENT` / `MAX_WAITERS` | `100` / `0` | held long-polls per client address / in total; over the cap a wait answers at once instead of holding |
 | `RATE_CREATE` | `0` | rooms and aliases created per client address per hour, counted together |
-| `RATE_CREATE_EXEMPT` | unset | comma-separated client addresses `RATE_CREATE` skips (`MAX_ROOMS` still applies), for a proxy or adapter that limits its own callers |
+| `LIMITS_EXEMPT` | unset | comma-separated client addresses the per-address limits (`RATE_CREATE`, `MAX_WAITERS_PER_CLIENT`) skip, for a proxy or adapter that limits its own callers; `MAX_ROOMS` and `MAX_WAITERS` still apply. `RATE_CREATE_EXEMPT` is read as an older name |
 | `RATE_POST` | `0` | messages per participant per minute |
 | `TRUST_PROXY` | unset | `1` = take the client address and scheme from `X-Forwarded-*` (rightmost hop: one trusted proxy) |
 | `MCP_URL` | unset | where a [parlor-mcp](https://github.com/dariorapisardi/parlor-mcp) adapter serves this server, if one does; the pages then tell web chats to add it as a connector |

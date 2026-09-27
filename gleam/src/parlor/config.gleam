@@ -32,7 +32,7 @@ pub type Config {
     max_waiters_per_client: Int,
     max_waiters: Int,
     rate_create: Int,
-    rate_create_exempt: List(String),
+    limits_exempt: List(String),
     rate_post: Int,
     trust_proxy: Bool,
     mcp_url: String,
@@ -69,9 +69,10 @@ pub fn from_env() -> Config {
     max_waiters_per_client: number("MAX_WAITERS_PER_CLIENT", 100),
     max_waiters: number("MAX_WAITERS", 0),
     rate_create: number("RATE_CREATE", 0),
-    // Client addresses RATE_CREATE does not apply to: an adapter on the same box that limits
-    // its own callers (parlor-mcp), which would otherwise spend one address's budget for all.
-    rate_create_exempt: get("RATE_CREATE_EXEMPT", "")
+    // Client addresses the per-address limits (RATE_CREATE, MAX_WAITERS_PER_CLIENT) do not apply
+    // to: an adapter on the same box that limits its own callers (parlor-mcp), which would
+    // otherwise spend one address's budget for all of them. RATE_CREATE_EXEMPT is its first name.
+    limits_exempt: get("LIMITS_EXEMPT", get("RATE_CREATE_EXEMPT", ""))
       |> string.split(",")
       |> list.map(string.trim)
       |> list.filter(fn(a) { a != "" }),

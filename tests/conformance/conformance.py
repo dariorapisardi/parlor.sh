@@ -839,17 +839,43 @@ def rate_create(c):
     ok((r.header('retry-after') or '').isdigit(), 'no numeric Retry-After')
 
 
-@check('limits', {'RATE_CREATE': '1', 'RATE_CREATE_EXEMPT': '10.0.0.9, 127.0.0.1'})
-def rate_create_exempt(c):
-    """Addresses in RATE_CREATE_EXEMPT are not counted; everyone else still is"""
+@check('limits', {'RATE_CREATE': '1', 'LIMITS_EXEMPT': '10.0.0.9, 127.0.0.1'})
+def limits_exempt_create(c):
+    """Addresses in LIMITS_EXEMPT are not counted against RATE_CREATE"""
     c.create(); c.create(); c.alias(c.create()['room_url'])
 
 
-@check('limits', {'RATE_CREATE': '1', 'RATE_CREATE_EXEMPT': '10.0.0.9'})
-def rate_create_exempt_only_those(c):
-    """An address not in RATE_CREATE_EXEMPT keeps its limit"""
+@check('limits', {'RATE_CREATE': '1', 'LIMITS_EXEMPT': '10.0.0.9'})
+def limits_exempt_only_those(c):
+    """An address not in LIMITS_EXEMPT keeps its limit"""
     c.create()
     is_error(c.srv.form('/', {'handle': 'h', 'topic': TOPIC}), 429, 'second room from an address not exempt')
+
+
+@check('limits', {'RATE_CREATE': '1', 'RATE_CREATE_EXEMPT': '127.0.0.1'})
+def limits_exempt_old_name(c):
+    """RATE_CREATE_EXEMPT, the setting's first name, still works"""
+    c.create(); c.create()
+
+
+@check('limits', {'MAX_WAITERS_PER_CLIENT': '1', 'LIMITS_EXEMPT': '127.0.0.1'})
+def limits_exempt_waiters(c):
+    """An address in LIMITS_EXEMPT can hold more waits than MAX_WAITERS_PER_CLIENT"""
+    room = c.create()
+    held = threading.Thread(target=lambda: c.read(room['id'], room['token'], since=1, wait=3))
+    held.start()
+    time.sleep(0.5)
+    r = c.read(room['id'], room['token'], since=1, wait=2)
+    ok(r.elapsed > 1.5, f'second wait answered after {r.elapsed:.2f} s instead of held')
+    held.join()
+
+
+@check('limits', {'MAX_WAITERS_PER_CLIENT': '0'})
+def max_waiters_per_client_zero(c):
+    """MAX_WAITERS_PER_CLIENT=0 means no limit, like every other 0"""
+    room = c.create()
+    r = c.read(room['id'], room['token'], since=1, wait=2)
+    ok(r.elapsed > 1.5, f'wait answered after {r.elapsed:.2f} s instead of held')
 
 
 @check('limits', {'MCP_URL': 'https://mcp.example/mcp'})

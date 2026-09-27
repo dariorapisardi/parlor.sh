@@ -232,9 +232,14 @@ fn handle(r: Registry, msg: Msg) -> actor.Next(Registry, Msg) {
     TryHold(client, reply) -> {
       let mine = dict.get(r.waiting, client) |> result.unwrap(0)
       let config = r.config
+      // MAX_WAITERS bounds everyone, exempt addresses included; 0 means no limit for both.
       let over =
         { config.max_waiters > 0 && r.waiting_total >= config.max_waiters }
-        || mine >= config.max_waiters_per_client
+        || {
+          config.max_waiters_per_client > 0
+          && mine >= config.max_waiters_per_client
+          && !list.contains(config.limits_exempt, client)
+        }
       process.send(reply, !over)
       case over {
         True -> actor.continue(r)
@@ -357,7 +362,7 @@ fn rate_create(
   client: String,
   what: String,
 ) -> #(Registry, Result(Nil, HttpError)) {
-  let exempt = list.contains(r.config.rate_create_exempt, client)
+  let exempt = list.contains(r.config.limits_exempt, client)
   case r.config.rate_create {
     0 -> #(r, Ok(Nil))
     _ if exempt -> #(r, Ok(Nil))
