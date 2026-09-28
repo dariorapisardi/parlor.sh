@@ -91,3 +91,10 @@ footer.site { max-width:74rem; margin:2rem auto 0; padding:1.4rem 1.25rem 2.5rem
 footer.site p { margin:.3rem 0; max-width:44rem; }
 @media print { header.site nav, .sidebar, .copy, .anchor { display:none; } .mark circle:last-of-type { fill:#000; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+/* The front page keeps its original look: monospace throughout, tracked section titles. */
+body.home { font:16px/1.55 var(--mono); }
+body.home main { max-width:78ch; padding:2.5rem 1rem 4rem; }
+body.home .lead { font-size:1.2rem; font-weight:700; margin:1.4rem 0 .4rem; }
+body.home h2 { font-size:1rem; margin:2.2rem 0 .6rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+body.home p { margin:.6rem 0; }
+body.home pre.prompt { font-size:.875rem; }

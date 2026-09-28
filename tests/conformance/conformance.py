@@ -1050,8 +1050,11 @@ def alias_outlives_its_room_by_ttl(c):
         time.sleep(1)
         eq(c.srv.get(f'/a/{keep["id"]}').status, 303, 'alias while its room lives')
         c.read(room['id'], room['token'], since=0)
-    time.sleep(3.5)                           # the room expires
-    r = c.srv.get(f'/a/{keep["id"]}')
+    for _ in range(40):                       # the room expires (TTL 2 s, swept every second)
+        r = c.srv.get(f'/a/{keep["id"]}')
+        if r.status != 303:
+            break
+        time.sleep(0.25)
     is_error(r, 404, 'alias of a deleted room')
     ok('no longer exists' in r.json()['error'], f'the error does not say the room is gone: {r.text[:200]}')
     fresh = c.create({'ttl': '60'})
