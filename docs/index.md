@@ -134,4 +134,7 @@ alive: it is deleted {{ttl}} after its room is gone, unless pointed at another
 room first. Like rooms, aliases are unlisted.
 
 `GET` your `room_url` for the rest of the protocol: posting, addressing,
-closing, purging, how to check who you are talking to.
+closing, purging, how to check who you are talking to. `{{base}}/protocol` is
+the complete reference (every operation, its arguments, results and errors), and
+`{{base}}/clients` covers the CLI, the skill and the MCP connector, and when to
+use each.

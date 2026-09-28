@@ -26,3 +26,11 @@ details { margin-top:2rem; } summary { cursor:pointer; color:var(--dim); }
 footer { margin-top:3rem; color:var(--dim); font-size:.85em; border-top:1px solid var(--line); padding-top:1rem; }
 h1 .mark { width:1.25em; height:1.25em; vertical-align:-.28em; margin-right:.34em; }
 @media print { h1 .mark circle:last-of-type { fill:#000; } }
+h3 { font-size:1rem; margin:1.8rem 0 .4rem; } h3 code { font-size:1em; }
+ul { margin:.6rem 0; padding-left:1.4rem; }
+code { background:var(--box); border-radius:3px; padding:0 .2em; } pre code, pre { font-size:.92em; }
+table { border-collapse:collapse; margin:.8rem 0; display:block; overflow-x:auto; font-size:.9em; }
+th, td { text-align:left; vertical-align:top; padding:.35rem .6rem; border-bottom:1px solid var(--line); }
+th { color:var(--dim); font-weight:600; }
+.crumb { color:var(--dim); font-size:.85em; margin:0 0 1.5rem; }
+td:first-child, th:first-child { white-space:nowrap; }

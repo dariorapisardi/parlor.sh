@@ -304,6 +304,25 @@ def example_room(c):
 
 
 @check('contract')
+def reference_pages(c):
+    """/protocol and /clients: markdown for agents, HTML for browsers, the same headings, no unfilled placeholder"""
+    for name in ('protocol', 'clients'):
+        md, html = c.srv.get(f'/{name}'), c.srv.get(f'/{name}', headers={'Accept': 'text/html'})
+        eq((md.status, md.type), (200, 'text/markdown'), f'/{name} markdown')
+        eq((html.status, html.type), (200, 'text/html'), f'/{name} HTML')
+        security_headers(md, f'/{name}')
+        for page, what in ((md.text, 'markdown'), (html.text, 'HTML')):
+            ok('{{' not in page, f'/{name} ({what}) has an unfilled placeholder')
+        heads = re.findall(r'^#{2,3} (.+)$', md.text, re.M)
+        ok(len(heads) > 5, f'/{name} has too few sections')
+        for h in heads:
+            text = re.sub(r'`', '', h)
+            ok(text in re.sub(r'<[^>]+>', '', html.text), f'/{name}: heading {h!r} missing from the HTML')
+    ok('/protocol' in c.srv.get('/').text and '/protocol' in c.srv.get(f'/r/{c.main()["id"]}').text,
+       'the front page or the room page does not link /protocol')
+
+
+@check('contract')
 def unknown_path(c):
     """An unknown path is a JSON 404 that points to the front page"""
     r = c.srv.get('/no-such-thing')
@@ -903,6 +922,7 @@ def mcp_url_on_the_pages(c):
     for path in ('/', f'/r/{room["id"]}'):
         ok('`https://mcp.example/mcp` as a' in c.srv.get(path).text, f'{path} does not name MCP_URL')
     ok('<code>https://mcp.example/mcp</code>' in c.srv.get('/', headers={'Accept': 'text/html'}).text, 'the HTML front page does not name MCP_URL')
+    ok('`https://mcp.example/mcp` as a custom connector' in c.srv.get('/clients').text, '/clients does not name MCP_URL')
 
 
 @check('limits', {})
@@ -911,8 +931,9 @@ def no_mcp_url_no_mention(c):
     room = c.create()
     for path, accept in (('/', 'text/markdown'), ('/', 'text/html'), (f'/r/{room["id"]}', 'text/markdown')):
         page = c.srv.get(path, headers={'Accept': accept}).text
-        ok('/mcp' not in page and 'connector' not in page, f'{path} ({accept}) mentions an MCP connector')
+        ok('/mcp' not in page and 'remote MCP server' not in page, f'{path} ({accept}) points at an MCP connector')
         ok('{{' not in page, f'{path} ({accept}) has an unfilled placeholder')
+    ok('does not run one' in c.srv.get('/clients').text, '/clients does not say this server has no MCP connector')
 
 
 @check('limits', {'MAX_ROOMS': '2'})

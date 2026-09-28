@@ -13,6 +13,8 @@ jobs:
           otp-version: '27.3'
           gleam-version: '1.18.1'
           rebar3-version: '3'
+      # The HTML twins of the reference pages are generated from their markdown: never stale.
+      - run: python3 docs/build.py --check
       - run: cd gleam && gleam export erlang-shipment
       # The build, compiled on the Erlang mars runs: what deploy/push.sh ships.
       - uses: actions/upload-artifact@v4

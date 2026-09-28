@@ -37,6 +37,8 @@ pub type Docs {
     room_html: String,
     example_html: String,
     example: Example,
+    /// The reference pages, by name: markdown and its generated HTML twin (docs/build.py).
+    references: List(#(String, #(String, String))),
   )
 }
 
@@ -95,7 +97,22 @@ pub fn load_docs(config: Config) -> Result(Docs, String) {
   use example_html <- result.try(page("example.html"))
   use example_lines <- result.try(read("example-room.jsonl"))
   use example <- result.try(parse_example(example_lines))
-  Ok(Docs(index_md:, room_md:, index_html:, room_html:, example_html:, example:))
+  use references <- result.try(
+    list.try_map(["protocol", "clients"], fn(name) {
+      use md <- result.try(read(name <> ".md"))
+      use html <- result.map(page(name <> ".html"))
+      #(name, #(md, html))
+    }),
+  )
+  Ok(Docs(
+    index_md:,
+    room_md:,
+    index_html:,
+    room_html:,
+    example_html:,
+    example:,
+    references:,
+  ))
 }
 
 fn parse_example(text: String) -> Result(Example, String) {
@@ -279,6 +296,8 @@ fn route(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
   case c.parts, method {
     [], Get -> Ok(front_page(web, c))
     ["example"], Get -> Ok(example(web, c))
+    [name], Get if name == "protocol" || name == "clients" ->
+      Ok(reference(web, c, name))
     ["cli"], Get -> cli(web, c)
     [], Post -> create(web, c)
     ["r", id, ..rest], _ -> {
@@ -305,6 +324,72 @@ fn mcp_md(config: Config, reads: String) -> String {
       <> " but not join or post: its user can add `"
       <> url
       <> "` as a\nconnector (a remote MCP server, no sign-in) to give it the tools.\n\n"
+  }
+}
+
+// /protocol and /clients: the same text for agents (markdown) and browsers (its HTML twin),
+// filled with this server's own settings, so a self-hosted instance describes itself.
+fn reference(web: Web, c: Ctx, name: String) -> Response(ResponseData) {
+  let config = web.config
+  let limit = fn(n, unit) {
+    case n {
+      0 -> "no limit"
+      n -> int.to_string(n) <> unit
+    }
+  }
+  let ttl_range = case config.ttl_max {
+    0 -> "any lifetime of at least " <> config.human_duration(config.ttl_min)
+    max ->
+      config.human_duration(config.ttl_min)
+      <> " to "
+      <> config.human_duration(max)
+  }
+  let connect = fn(html) {
+    case config.mcp_url, html {
+      "", False ->
+        "This server does not run one; [parlor-mcp](https://github.com/dariorapisardi/parlor-mcp) can run next to any parlor server."
+      "", True ->
+        "This server does not run one; <a href=\"https://github.com/dariorapisardi/parlor-mcp\">parlor-mcp</a> can run next to any parlor server."
+      url, False ->
+        "On this server, add `"
+        <> url
+        <> "` as a custom connector (a remote MCP server; no sign-in)."
+      url, True ->
+        "On this server, add <code>"
+        <> escape_html(url)
+        <> "</code> as a custom connector (a remote MCP server; no sign-in)."
+    }
+  }
+  let vars = [
+    #("base", c.base),
+    #("ttl", config.human_duration(config.ttl)),
+    #("ttl_range", ttl_range),
+    #("max_body", int.to_string(config.max_body)),
+    #("max_wait", js_number(config.max_wait)),
+    #("max_messages", limit(config.max_messages, "")),
+    #("max_room_bytes", limit(config.max_room_bytes, " bytes")),
+    #("max_participants", limit(config.max_participants, "")),
+    #("rate_create", limit(config.rate_create, " per hour")),
+    #("rate_post", limit(config.rate_post, " per minute")),
+  ]
+  let assert Ok(#(md, html)) = list.key_find(docs().references, name)
+  case c.html {
+    False ->
+      send(
+        200,
+        render(md, [#("mcp_connect", connect(False)), ..vars]),
+        "text/markdown",
+        [vary],
+      )
+    True -> {
+      let escaped = list.map(vars, fn(kv) { #(kv.0, escape_html(kv.1)) })
+      send(
+        200,
+        render(html, [#("mcp_connect", connect(True)), ..escaped]),
+        "text/html",
+        [vary],
+      )
+    }
   }
 }
 

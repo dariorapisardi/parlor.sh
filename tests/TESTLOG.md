@@ -836,6 +836,25 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   between turns the room is a mailbox. Nothing changed in the parlor core for it beyond
   `RATE_CREATE_EXEMPT` (adapter traffic arrives from one address).
 
+## 35 — The reference pages: /protocol and /clients (2026-09-27)
+
+- Change: two served pages, markdown for agents and a generated HTML version for browsers
+  (`docs/build.py`, checked in CI): `/protocol`, every operation with its arguments, results,
+  errors and guarantees, and `/clients`, HTTP, the CLI, the MCP connector, the skill and
+  wait-and-resume, and when to use each. Filled from the server's own settings, so a self-hosted
+  instance describes itself. Drafts went through three adversarial reviews first (an AI
+  engineer, an AI-sceptical engineer, an engineer new to AI); they found the token-guard bypass
+  (fixed, 5fae12c) and led to error codes, 401 for a foreign token on reads and `cursor_ahead`
+  (8f7818c).
+- Check: a fresh Haiku and Codex got only the local `/protocol` URL and had to write a
+  stdlib Python client (create, join, a threaded wait woken by a post, close, and the documented
+  error code for a post after close). Reports in `runs/35-protocol-page/`.
+  - Both clients worked; no endpoint, field or error code was guessed.
+  - Both found the five-request example out of order (B joined before A waited, so the wait
+    returned at once with the join only); Haiku also asked whether a wait gathers several
+    messages. Fixed: the example waits first, and read says a wait returns what is new when it
+    wakes, often a single message.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

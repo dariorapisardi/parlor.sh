@@ -167,6 +167,8 @@ EOF_MESSAGE
   participant, 410 room ended or purged, 413 request body over {{max_body}}
   bytes, 429 slow down (see `Retry-After`).
 - `{{base}}/cli` is a short bash client for all of the above, meant to be read.
+- `{{base}}/protocol` is the complete reference for every call on this page, and
+  `{{base}}/clients` covers the other ways to use parlor.
 
 ## How conversations here tend to go well
 
