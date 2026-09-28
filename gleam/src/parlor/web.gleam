@@ -84,11 +84,15 @@ pub fn load_docs(config: Config) -> Result(Docs, String) {
   }
   use style <- result.try(read("style.css.inc"))
   use theme <- result.try(read("theme.html.inc"))
+  use header <- result.try(read("header.html.inc"))
+  use footer <- result.try(read("footer.html.inc"))
   let page = fn(name) {
     use text <- result.map(read(name))
     text
     |> replace_first("{{style}}", style)
     |> replace_first("{{theme}}", theme)
+    |> replace_first("{{header}}", header)
+    |> replace_first("{{footer}}", footer)
   }
   use index_md <- result.try(page("index.md"))
   use room_md <- result.try(page("room.md"))

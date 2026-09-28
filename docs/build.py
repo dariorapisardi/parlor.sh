@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Build the HTML twins of the reference pages from their markdown.
+"""Build the HTML twins of the docs pages from their markdown.
 
-docs/protocol.md and docs/clients.md are what agents read; docs/protocol.html and
-docs/clients.html are the same text for browsers, generated here so that the two never
-drift. `{{placeholders}}` pass through untouched: the server fills them in both.
+docs/clients.md and docs/protocol.md are what agents read; docs/clients.html and
+docs/protocol.html are the same text for browsers, generated here so that the two never
+drift. Each HTML page gets the docs sidebar (both pages and their sections) and a search
+index of every section of both, embedded so search works without a server round trip.
+`{{placeholders}}` pass through untouched: the server fills them in both representations.
 
     docs/build.py            write the HTML files
     docs/build.py --check    exit 1 if they are not what this script would write (CI)
@@ -12,14 +14,15 @@ Covers only the markdown these pages use: headings, paragraphs, lists (nested by
 spaces), tables, indented code blocks, `code`, **bold**, *italic*, [links](url).
 Python standard library only.
 """
-import html, re, sys
+import html, json, re, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-PAGES = {
-    "protocol": "The parlor interface: every operation, its arguments, results and errors",
-    "clients": "Ways to use parlor: HTTP, the CLI, the MCP connector, the skill, and when to use each",
-}
+# In sidebar order: the guide first, then the reference.
+PAGES = [
+    ("clients", "Using parlor", "Ways to use parlor: HTTP, the CLI, the MCP connector, the skill, and when to use each."),
+    ("protocol", "Reference", "The parlor interface: every operation, its arguments, results and errors."),
+]
 
 TEMPLATE = """<!doctype html>
 <html lang="en">
@@ -33,16 +36,77 @@ TEMPLATE = """<!doctype html>
 <style>{{{{style}}}}</style>
 {{{{theme}}}}
 </head>
-<body>
-<button id="theme" type="button" aria-label="Switch between light and dark theme" hidden></button>
-<main class="doc">
-<p class="crumb"><a href="{{{{base}}}}/">parlor.sh</a> · <a href="{{{{base}}}}/protocol">protocol</a> · <a href="{{{{base}}}}/clients">clients</a></p>
+<body class="docs">
+{{{{header}}}}
+<div class="docs-layout">
+<aside class="sidebar">
+<div class="search" role="search">
+<input id="q" type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
+<ol id="results" hidden aria-live="polite"></ol>
+</div>
+<details class="toc" open>
+<summary>Contents</summary>
+<nav aria-label="Docs">
+{toc}
+</nav>
+</details>
+</aside>
+<main class="doc" id="content">
 {body}
-<footer>
-This page is generated from its markdown, which is what an agent gets at the same URL. ·
-<a href="https://github.com/dariorapisardi/parlor.sh">source &amp; self-hosting</a> · MIT
-</footer>
 </main>
+</div>
+{{{{footer}}}}
+<script type="application/json" id="index">{index}</script>
+<script>
+// Docs search: every section of both pages, matched on all the words typed. "/" focuses it.
+(function () {{
+  var q = document.getElementById("q"), out = document.getElementById("results");
+  var index = JSON.parse(document.getElementById("index").textContent);
+  var toc = document.querySelector(".toc");
+  if (matchMedia("(max-width: 58rem)").matches) toc.open = false;
+  function snippet(text, word) {{
+    var i = text.toLowerCase().indexOf(word);
+    if (i < 0) return text.slice(0, 110);
+    var s = Math.max(0, i - 40);
+    return (s ? "…" : "") + text.slice(s, s + 120) + "…";
+  }}
+  function show() {{
+    var words = q.value.toLowerCase().split(/\\s+/).filter(Boolean);
+    out.textContent = "";
+    if (!words.length) {{ out.hidden = true; return; }}
+    var hits = index.map(function (e) {{
+      var t = e.title.toLowerCase(), b = e.text.toLowerCase(), score = 0;
+      for (var i = 0; i < words.length; i++) {{
+        if (t.indexOf(words[i]) >= 0) score += 3; else if (b.indexOf(words[i]) >= 0) score += 1; else return null;
+      }}
+      return {{ e: e, score: score }};
+    }}).filter(Boolean).sort(function (a, b) {{ return b.score - a.score; }}).slice(0, 8);
+    out.hidden = false;
+    if (!hits.length) {{
+      var li = document.createElement("li"); li.className = "none"; li.textContent = "Nothing matches.";
+      out.appendChild(li); return;
+    }}
+    hits.forEach(function (h, n) {{
+      var li = document.createElement("li"), a = document.createElement("a");
+      a.href = h.e.url; if (n === 0) a.className = "first";
+      var w = document.createElement("span"); w.className = "where"; w.textContent = h.e.page;
+      var t = document.createElement("span"); t.textContent = h.e.title;
+      var s = document.createElement("span"); s.className = "snip"; s.textContent = snippet(h.e.text, words[0]);
+      a.appendChild(w); a.appendChild(t); a.appendChild(s); li.appendChild(a); out.appendChild(li);
+    }});
+  }}
+  q.addEventListener("input", show);
+  q.addEventListener("keydown", function (ev) {{
+    if (ev.key === "Enter") {{ var a = out.querySelector("a"); if (a) location.href = a.href; }}
+    if (ev.key === "Escape") {{ q.value = ""; show(); }}
+  }});
+  document.addEventListener("keydown", function (ev) {{
+    if (ev.key === "/" && document.activeElement !== q && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {{
+      ev.preventDefault(); q.focus();
+    }}
+  }});
+}})();
+</script>
 </body>
 </html>
 """
@@ -64,8 +128,14 @@ def inline(text):
     return re.sub("\x00(\\d+)\x00", lambda m: spans[int(m.group(1))], text)
 
 
+def plain(text):
+    """Markdown inline text as plain text, for the search index and the contents."""
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    return re.sub(r"[`*]", "", text)
+
+
 def slug(text):
-    return re.sub(r"[^a-z0-9]+", "-", re.sub(r"`", "", text.lower())).strip("-")
+    return re.sub(r"[^a-z0-9]+", "-", plain(text).lower()).strip("-")
 
 
 def blocks(lines):
@@ -85,8 +155,11 @@ def blocks(lines):
             out.append("<pre>" + html.escape("\n".join(code), quote=False) + "</pre>")
         elif m := re.match(r"(#{1,3}) (.*)", line):
             level, text = len(m.group(1)), m.group(2)
-            ident = "" if level == 1 else ' id="%s"' % slug(text)
-            out.append("<h%d%s>%s</h%d>" % (level, ident, inline(text), level))
+            if level == 1:
+                out.append("<h1>%s</h1>" % inline(text))
+            else:
+                ident = slug(text)
+                out.append('<h%d id="%s">%s<a class="anchor" href="#%s" aria-label="Link to this section">#</a></h%d>' % (level, ident, inline(text), ident, level))
             i += 1
         elif line.startswith("|"):
             rows = []
@@ -94,9 +167,9 @@ def blocks(lines):
                 rows.append([cell.strip() for cell in lines[i].strip().strip("|").split("|")])
                 i += 1
             head, body = rows[0], [r for r in rows[1:] if not all(re.fullmatch(r":?-+:?", c) for c in r)]
-            t = ["<table>", "<thead><tr>" + "".join("<th>%s</th>" % inline(c) for c in head) + "</tr></thead>", "<tbody>"]
+            t = ['<div class="table"><table>', "<thead><tr>" + "".join("<th>%s</th>" % inline(c) for c in head) + "</tr></thead>", "<tbody>"]
             t += ["<tr>" + "".join("<td>%s</td>" % inline(c) for c in r) + "</tr>" for r in body]
-            out.append("\n".join(t + ["</tbody>", "</table>"]))
+            out.append("\n".join(t + ["</tbody>", "</table></div>"]))
         elif line.startswith("- "):
             items = []
             while i < len(lines) and (lines[i].startswith("- ") or lines[i].startswith("  ") or not lines[i].strip()):
@@ -126,16 +199,67 @@ def item_html(lines):
     return inline(" ".join(first)) + ("\n" + rest if rest else "")
 
 
+def sections(md):
+    """(level, title, text) for every h2 and h3, text being the section's plain words."""
+    out, current = [], None
+    for line in md.split("\n"):
+        if m := re.match(r"(#{2,3}) (.*)", line):
+            current = [len(m.group(1)), m.group(2), []]
+            out.append(current)
+        elif current is not None and line.strip():
+            current[2].append(plain(line.strip().lstrip("-| ")))
+    return [(lvl, title, " ".join(words)) for lvl, title, words in out]
+
+
+def toc(current):
+    """Both pages; the current one expanded to its sections (and the reference to its operations)."""
+    out = []
+    for name, group, _ in PAGES:
+        md = (HERE / (name + ".md")).read_text()
+        title = re.match(r"# (.*)", md).group(1)
+        cur = ' aria-current="page"' if name == current else ""
+        out.append('<p class="group">%s</p>' % group)
+        out.append('<ul><li><a class="page" href="{{base}}/%s"%s>%s</a>' % (name, cur, html.escape(title)))
+        if name == current:
+            groups = []  # [(h2 title, [h3 titles])]
+            for lvl, head, _ in sections(md):
+                if lvl == 2 or not groups:
+                    groups.append((head, []))
+                else:
+                    groups[-1][1].append(head)
+            link = lambda h: '<a href="#%s">%s</a>' % (slug(h), html.escape(plain(h)))
+            lis = []
+            for head, subs in groups:
+                inner = "<ul>%s</ul>" % "".join("<li>%s</li>" % link(h) for h in subs) if subs else ""
+                lis.append("<li>%s%s</li>" % (link(head), inner))
+            out.append("<ul>\n%s\n</ul>" % "\n".join(lis))
+        out.append("</li></ul>")
+    return "\n".join(out)
+
+
+def index():
+    entries = []
+    for name, group, _ in PAGES:
+        md = (HERE / (name + ".md")).read_text()
+        title = re.match(r"# (.*)", md).group(1)
+        for _, head, text in sections(md):
+            entries.append({"page": title, "title": plain(head), "url": "{{base}}/%s#%s" % (name, slug(head)), "text": text})
+    # </script> can never appear inside the JSON block.
+    return json.dumps(entries, ensure_ascii=False).replace("</", "<\\/")
+
+
 def build(name):
     md = (HERE / (name + ".md")).read_text()
     title = re.match(r"# (.*)", md).group(1)
-    return TEMPLATE.format(title=html.escape(title), description=html.escape(PAGES[name]), name=name, body=blocks(md.split("\n")))
+    description = dict((n, d) for n, _, d in PAGES)[name]
+    return TEMPLATE.format(title=html.escape(title), description=html.escape(description), name=name,
+                           toc=toc(name), body=blocks(md.split("\n")), index=index())
 
 
 def main():
     check = "--check" in sys.argv[1:]
     stale = []
-    for name in PAGES:
+    for name, _, _ in PAGES:
         target, text = HERE / (name + ".html"), build(name)
         if check:
             if not target.exists() or target.read_text() != text:

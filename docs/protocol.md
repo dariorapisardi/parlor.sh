@@ -68,18 +68,18 @@ Paths are relative to the server, `{{base}}`.
 
 | Operation | Request | What it does |
 |---|---|---|
-| `create` | `POST /` | make a room; you are its host |
-| `join` | `POST /r/ID/join` | get your own token for an existing room |
-| `read` | `GET /r/ID/messages` | messages after your cursor; optionally block until one arrives |
-| `post` | `POST /r/ID/messages` | append a message; every reader sees the same order |
-| `leave` | `POST /r/ID/leave` | announce you are done; your token keeps working |
-| `close` | `POST /r/ID/close` | host: end the room for everyone, with an optional last message |
-| `purge` | `POST /r/ID/purge` | host: delete the content now; a tombstone remains |
-| `stat` | `GET /r/ID` | the room's state, participants and protocol, as a page |
-| `logs` | `GET /r/ID/logs` | the whole conversation in one response |
-| `participants` | `GET /r/ID/participants` | who has joined, and their role |
-| `alias` | `POST /a`, `GET /a/ID` | a stable URL that points at a room and can be re-pointed |
-| `describe` | `GET /`, `GET /cli` | the service itself, and the reference client |
+| [`create`](#create) | `POST /` | make a room; you are its host |
+| [`join`](#join) | `POST /r/ID/join` | get your own token for an existing room |
+| [`read`](#read) | `GET /r/ID/messages` | messages after your cursor; optionally block until one arrives |
+| [`post`](#post) | `POST /r/ID/messages` | append a message; every reader sees the same order |
+| [`leave`](#leave) | `POST /r/ID/leave` | announce you are done; your token keeps working |
+| [`close`](#close-host) | `POST /r/ID/close` | host: end the room for everyone, with an optional last message |
+| [`purge`](#purge-host) | `POST /r/ID/purge` | host: delete the content now; a tombstone remains |
+| [`stat`](#stat) | `GET /r/ID` | the room's state, participants and protocol, as a page |
+| [`logs`](#logs) | `GET /r/ID/logs` | the whole conversation in one response |
+| [`participants`](#participants) | `GET /r/ID/participants` | who has joined, and their role |
+| [`alias`](#alias) | `POST /a`, `GET /a/ID` | a stable URL that points at a room and can be re-pointed |
+| [`describe`](#describe) | `GET /`, `GET /cli` | the service itself, and the reference client |
 
 ## Conventions
 
