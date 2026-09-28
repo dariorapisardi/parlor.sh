@@ -91,7 +91,8 @@ h2:hover .anchor, h3:hover .anchor, .anchor:focus-visible { opacity:1; }
 }
 @media (max-width: 30rem) { header.site nav { gap:1rem; } }
 footer.site { max-width:74rem; margin:2rem auto 0; padding:1.4rem 1.25rem 2.5rem; border-top:1px solid var(--line); color:var(--dim); font-size:var(--fs-small); }
-footer.site p { margin:.3rem 0; max-width:44rem; }
+footer.site { text-align:right; }
+footer.site p { margin:.3rem 0; }
 @media print { header.site nav, .sidebar, .copy, .anchor { display:none; } .mark circle:last-of-type { fill:#000; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
 /* The front page keeps its original look (monospace throughout, tracked section titles) on the same scale. */
