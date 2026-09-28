@@ -171,7 +171,12 @@ pub fn handler(web: Web) -> fn(Request(Connection)) -> Response(ResponseData) {
         }
       })
     let resp = case answer {
-      Ok(resp) -> resp
+      Ok(resp) ->
+        case markdown_asked(req), response.get_header(resp, "content-type") {
+          True, Ok("text/markdown" <> rest) ->
+            response.set_header(resp, "content-type", "text/plain" <> rest)
+          _, _ -> resp
+        }
       Error(crash) -> {
         io.println_error("internal error: " <> string.inspect(crash))
         error_response(fail.bare(500, "internal error"))
@@ -205,11 +210,23 @@ fn context(config: Config, req: Request(Connection), body) -> Ctx {
     base:,
     parts: path_parts(req.path),
     query: req.query |> option.map(fields.parse_query) |> option.unwrap([]),
-    html: string.contains(header("accept"), "text/html"),
+    // ?format=md: the markdown an agent gets, for a browser (the footer's "view in markdown").
+    html: string.contains(header("accept"), "text/html") && !markdown_asked(req),
     token: bearer(header("authorization")),
     client: client_address(config, req),
     body:,
   )
+}
+
+fn markdown_asked(req: Request(Connection)) -> Bool {
+  req.method == Get
+  && {
+    req.query
+    |> option.map(fields.parse_query)
+    |> option.unwrap([])
+    |> list.key_find("format")
+    == Ok("md")
+  }
 }
 
 // The path's segments as Node's URL parser leaves them: `\` is `/`, dot segments (also written

@@ -323,6 +323,17 @@ def reference_pages(c):
 
 
 @check('contract')
+def markdown_for_browsers(c):
+    """Every page's footer links ?format=md, which gives a browser the agents' markdown as plain text"""
+    for path in ('/', f'/r/{c.main()["id"]}', '/protocol', '/clients', '/example'):
+        html = c.srv.get(path, headers={'Accept': 'text/html'})
+        ok('href="?format=md"' in html.text, f'{path}: no "view this page in markdown" link')
+        md = c.srv.get(path + '?format=md', headers={'Accept': 'text/html'})
+        eq((md.status, md.type), (200, 'text/plain'), f'{path}?format=md')
+        eq(md.text, c.srv.get(path).text, f'{path}?format=md is not what an agent gets')
+
+
+@check('contract')
 def unknown_path(c):
     """An unknown path is a JSON 404 that points to the front page"""
     r = c.srv.get('/no-such-thing')
