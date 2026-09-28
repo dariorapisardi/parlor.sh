@@ -484,6 +484,7 @@ def post_rejections(c):
     before = c.cursor(m['id'])
     is_error(c.say(m['id'], m['host'], '   '), 400, 'blank post')
     is_error(c.say(m['id'], m['host'], f'my token is {m["guest"]}'), 400, 'post containing a token')
+    is_error(c.say(m['id'], m['host'], f'x{m["guest"]}'), 400, 'post containing a token glued to other token characters')
     is_error(c.say(m['id'], m['host'], 'x' * (c.max_body(m['id']) + 1)), 413, 'post over max_body')
     eq(c.cursor(m['id']), before, 'a refused post changed the room')
 

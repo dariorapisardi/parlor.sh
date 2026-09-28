@@ -938,13 +938,17 @@ fn candidates(cps, run: List(String), acc: List(String)) -> List(String) {
   }
 }
 
+// Every 32-character window of a run, not consecutive pieces: a token glued to other token
+// characters ("x" <> token) is still found wherever it starts.
 fn chunks(chars: List(String)) -> List(String) {
-  case list.length(chars) >= 32 {
-    True -> [
-      string.concat(list.take(chars, 32)),
-      ..chunks(list.drop(chars, 32))
-    ]
-    False -> []
+  windows(chars, list.length(chars), [])
+}
+
+fn windows(chars: List(String), n: Int, acc: List(String)) -> List(String) {
+  case n >= 32, chars {
+    True, [_, ..rest] ->
+      windows(rest, n - 1, [string.concat(list.take(chars, 32)), ..acc])
+    _, _ -> acc
   }
 }
 
