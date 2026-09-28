@@ -200,7 +200,7 @@ Every tunable is an environment variable of the server (see README). Defaults ar
 | Messages per room | 10,000 (the last one is the host's, via close) |
 | Message text per room | unlimited (1 MiB on parlor.sh) |
 | Participants per room | unlimited |
-| Longest long-poll | 55 s |
+| Longest long-poll | 55 s (below the 60 s idle timeout many proxies and load balancers apply) |
 | Room and alias creations per client address per hour | unlimited |
 | Aliases on the server | unlimited |
 | Posts per participant per minute | unlimited |

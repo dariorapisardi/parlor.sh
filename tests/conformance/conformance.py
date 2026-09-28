@@ -132,11 +132,15 @@ def eq(got, want, what):
         raise Failed(f'{what}: expected {want!r}, got {got!r}')
 
 
-def is_error(r, status, what):
-    """Errors are JSON {"error", "hint"} with the matching status (room.md)."""
+def is_error(r, status, what, code=None):
+    """Errors are JSON {"error", "code", "hint"} with the matching status (room.md)."""
     eq(r.status, status, f'{what}: status')
     eq(r.type, 'application/json', f'{what}: content type')
-    ok('error' in r.json(), f'{what}: no "error" field in {r.text[:100]!r}')
+    j = r.json()
+    ok('error' in j, f'{what}: no "error" field in {r.text[:100]!r}')
+    ok(re.fullmatch(r'[a-z]+(_[a-z]+)*', j.get('code', '')), f'{what}: no snake_case "code" in {r.text[:100]!r}')
+    if code:
+        eq(j['code'], code, f'{what}: code')
 
 
 FOOTER = re.compile(r'^--- cursor: (\d+) \| status: (open|closed) \| present: (\d+)/(\d+)'
@@ -445,8 +449,8 @@ def posting_needs_the_right_token(c):
 def host_only_actions(c):
     """Only the host can close or purge: a guest gets a 403"""
     m = c.main()
-    is_error(c.srv.post(f'/r/{m["id"]}/close', token=m['guest']), 403, 'guest close')
-    is_error(c.srv.post(f'/r/{m["id"]}/purge', token=m['guest']), 403, 'guest purge')
+    is_error(c.srv.post(f'/r/{m["id"]}/close', token=m['guest']), 403, 'guest close', 'not_host')
+    is_error(c.srv.post(f'/r/{m["id"]}/purge', token=m['guest']), 403, 'guest purge', 'not_host')
 
 
 # ---- posting -------------------------------------------------------------------------------
@@ -483,7 +487,7 @@ def post_rejections(c):
     m = c.main()
     before = c.cursor(m['id'])
     is_error(c.say(m['id'], m['host'], '   '), 400, 'blank post')
-    is_error(c.say(m['id'], m['host'], f'my token is {m["guest"]}'), 400, 'post containing a token')
+    is_error(c.say(m['id'], m['host'], f'my token is {m["guest"]}'), 400, 'post containing a token', 'token_in_message')
     is_error(c.say(m['id'], m['host'], f'x{m["guest"]}'), 400, 'post containing a token glued to other token characters')
     is_error(c.say(m['id'], m['host'], 'x' * (c.max_body(m['id']) + 1)), 413, 'post over max_body')
     eq(c.cursor(m['id']), before, 'a refused post changed the room')
@@ -577,11 +581,23 @@ def wait_holds_when_nothing_happens(c):
 
 
 @check('contract')
-def wait_past_the_end_holds(c):
-    """A cursor past the end is held like any other"""
+def cursor_ahead_refused(c):
+    """A cursor beyond the last message is refused (it would skip what arrives), and says where the room is"""
     m = c.main()
     r = c.read(m['id'], m['host'], since=99999, wait=2)
-    ok(1.8 <= r.elapsed <= 3.5, f'held {r.elapsed:.2f} s')
+    is_error(r, 400, 'cursor past the end', 'cursor_ahead')
+    ok(r.elapsed < 1, f'refused after {r.elapsed:.2f} s instead of at once')
+    ok(f'#{c.cursor(m["id"])}' in r.json().get('hint', ''), 'the hint does not name the last message')
+
+
+@check('contract')
+def read_token_must_be_yours(c):
+    """A read may omit the token, but one it sends must be of this room; for_me needs one"""
+    m, other = c.main(), c.spare()
+    is_error(c.read(m['id'], other['token'], since=0), 401, 'read with another room\'s token', 'unknown_token')
+    is_error(c.read(m['id'], 'x' * 32, since=0), 401, 'read with a made-up token', 'unknown_token')
+    is_error(c.read(m['id'], since=0, for_me=1), 401, 'for_me without a token', 'missing_token')
+    eq(c.read(m['id'], since=0).status, 200, 'read without a token')
 
 
 @check('contract')
@@ -655,7 +671,7 @@ def close(c):
     room = c.create()
     g = c.join(room['id'])
     eq(c.srv.post(f'/r/{room["id"]}/close', token=room['token']).json(), {'ok': True, 'status': 'closed'}, 'close response')
-    is_error(c.say(room['id'], g['token'], 'too late'), 410, 'post after close')
+    is_error(c.say(room['id'], g['token'], 'too late'), 410, 'post after close', 'room_closed')
     is_error(c.srv.form(f'/r/{room["id"]}/join', {'handle': 'late'}), 410, 'join after close')
     eq(c.srv.get(f'/r/{room["id"]}/logs').status, 200, 'logs after close')
     eq(c.read(room['id'], since=0).json()['status'], 'closed', 'status')
@@ -815,7 +831,8 @@ def max_participants(c):
     c.join(room['id'], 'second')
     r = c.srv.form(f'/r/{room["id"]}/join', {'handle': 'third'})
     is_error(r, 403, 'third participant')
-    eq(r.json()['error'], 'room is full', 'error')
+    eq(r.json()['error'], 'participant limit reached', 'error')
+    eq(r.json()['code'], 'participant_limit', 'code')
 
 
 @check('limits', {'RATE_POST': '2'})

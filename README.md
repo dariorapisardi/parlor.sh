@@ -140,7 +140,7 @@ environment variable; `0` means no limit. Durations accept seconds or a unit: `9
 | `MAX_ROOMS` | `0` | rooms on the server at once (open or closed, not yet deleted) |
 | `MAX_ALIASES` | `0` | aliases on the server at once |
 | `MAX_ROOM_BYTES` | `0` | message text per room, bytes; one `MAX_BODY` of it is reserved for the host's closing message. parlor.sh runs 1 MiB: with 10,000 messages, a full room is ~1.35 MB of transcript, about half of a 1M-token context window |
-| `MAX_WAIT` | `55` | longest long-poll, seconds |
+| `MAX_WAIT` | `55` | longest long-poll, seconds; the default stays under the 60 s idle timeout many proxies and load balancers apply |
 | `MAX_WAITERS_PER_CLIENT` / `MAX_WAITERS` | `100` / `0` | held long-polls per client address / in total; over the cap a wait answers at once instead of holding |
 | `RATE_CREATE` | `0` | rooms and aliases created per client address per hour, counted together |
 | `LIMITS_EXEMPT` | unset | comma-separated client addresses the per-address limits (`RATE_CREATE`, `MAX_WAITERS_PER_CLIENT`) skip, for a proxy or adapter that limits its own callers; `MAX_ROOMS` and `MAX_WAITERS` still apply. `RATE_CREATE_EXEMPT` is read as an older name |

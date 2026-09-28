@@ -294,25 +294,13 @@ fn dispatch(a: Actor, msg: Msg) -> actor.Next(Actor, Msg) {
       let #(room, me) = authenticate(room, token)
       let handle = option.map(me, fn(p) { p.handle })
       let a = Actor(..a, content: Open(room))
-      let hold =
-        wait_ms > 0
-        && !is_draining()
-        && room.state.status == "open"
-        && !has_news(room, handle, query)
-        && a.deps.try_hold(client)
-      case hold {
-        False -> {
-          process.send(reply, Ok(reading(config, room, handle, query)))
+      case read_refusal(room, token, me, query) {
+        Some(e) -> {
+          process.send(reply, Error(e))
           actor.continue(a)
         }
-        True -> {
-          let timer = process.send_after(a.self, wait_ms, Expire(a.next_ref))
-          let w =
-            Waiter(ref: a.next_ref, handle:, query:, client:, reply:, timer:)
-          actor.continue(
-            Actor(..a, waiters: [w, ..a.waiters], next_ref: a.next_ref + 1),
-          )
-        }
+        None ->
+          hold_or_answer(a, config, room, handle, query, wait_ms, client, reply)
       }
     }
 
@@ -472,7 +460,7 @@ fn join(
           a,
           Error(fail.new(
             403,
-            "room is full",
+            "participant limit reached",
             "Limit is "
               <> int.to_string(config.max_participants)
               <> " participants.",
@@ -860,6 +848,71 @@ fn is_handle_grapheme(g: String) -> Bool {
   case string.to_utf_codepoints(g) {
     [cp, ..] -> fields.is_handle_char(string.utf_codepoint_to_int(cp))
     [] -> False
+  }
+}
+
+// A read is answered without a token, but a token it sends must be one of this room's (else the
+// client would believe it keeps the room alive while it does not), for_me needs one, and a cursor
+// can only be one the room has reached (a larger one would silently skip what arrives until then).
+fn read_refusal(
+  room: Room,
+  token: Option(String),
+  me: Option(Participant),
+  q: Query,
+) -> Option(HttpError) {
+  case token, me, q.for_me, q.since > room.count {
+    Some(_), None, _, _ ->
+      Some(fail.new(
+        401,
+        "unknown token for this room",
+        "Reads work without a token; with one, it must be yours for this room (from create or join). Drop the header to read anonymously.",
+      ))
+    None, _, True, _ ->
+      Some(fail.new(
+        401,
+        "missing Authorization: Bearer TOKEN header",
+        "for_me=1 selects messages for you, so it needs your token.",
+      ))
+    _, _, _, True ->
+      Some(fail.new(
+        400,
+        "cursor is ahead of the room",
+        "The last message is #"
+          <> int.to_string(room.count)
+          <> ". Pass the cursor a read returned, or 0 for everything.",
+      ))
+    _, _, _, _ -> None
+  }
+}
+
+fn hold_or_answer(
+  a: Actor,
+  config: Config,
+  room: Room,
+  handle: Option(String),
+  query: Query,
+  wait_ms: Int,
+  client: String,
+  reply: Subject(Result(Reading, HttpError)),
+) -> actor.Next(Actor, Msg) {
+  let hold =
+    wait_ms > 0
+    && !is_draining()
+    && room.state.status == "open"
+    && !has_news(room, handle, query)
+    && a.deps.try_hold(client)
+  case hold {
+    False -> {
+      process.send(reply, Ok(reading(config, room, handle, query)))
+      actor.continue(a)
+    }
+    True -> {
+      let timer = process.send_after(a.self, wait_ms, Expire(a.next_ref))
+      let w = Waiter(ref: a.next_ref, handle:, query:, client:, reply:, timer:)
+      actor.continue(
+        Actor(..a, waiters: [w, ..a.waiters], next_ref: a.next_ref + 1),
+      )
+    }
   }
 }
 

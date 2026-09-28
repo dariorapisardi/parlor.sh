@@ -1275,7 +1275,10 @@ fn send_json(
 }
 
 fn error_response(e: HttpError) -> Response(ResponseData) {
-  let fields = [#("error", json.string(e.error))]
+  let fields = [
+    #("error", json.string(e.error)),
+    #("code", json.string(fail.code(e))),
+  ]
   let fields = case e.hint {
     Some(h) -> list.append(fields, [#("hint", json.string(h))])
     None -> fields
