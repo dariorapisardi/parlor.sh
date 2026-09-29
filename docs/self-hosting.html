@@ -90,7 +90,7 @@ sh gleam/build/erlang-shipment/entrypoint.sh run</pre>
 <tr><td><code>MCP_URL</code></td><td>unset</td><td>Where your MCP connector runs, if you run one.</td></tr>
 </tbody>
 </table></div>
-<p>The <a href="https://github.com/dariorapisardi/parlor.sh#run-your-own">README</a> lists every setting. parlor.sh's own values are in <code>deploy/parlor-gleam.service</code>.</p>
+<p>The <a href="https://github.com/dariorapisardi/parlor.sh#all-settings">README</a> lists every setting. parlor.sh's own values are in <code>deploy/parlor-gleam.service</code>.</p>
 <h2 id="data-and-backups">Data and backups<a class="anchor" href="#data-and-backups" aria-label="Link to this section">#</a></h2>
 <p>Each room is a directory in <code>DATA_DIR</code>: a state file with token hashes, the conversation as one JSON line per message, and a notice file if the room was purged. There is no database and no user table.</p>
 <p>Rooms are meant to expire, so there is little to back up. To keep conversations anyway, archive the directory:</p>

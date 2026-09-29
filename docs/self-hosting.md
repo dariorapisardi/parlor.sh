@@ -58,7 +58,7 @@ Every setting is an environment variable. In the systemd unit they are the
 | `TRUST_PROXY` | unset | `1` to take the client's address from your proxy's `X-Forwarded-For`. |
 | `MCP_URL` | unset | Where your MCP connector runs, if you run one. |
 
-The [README](https://github.com/dariorapisardi/parlor.sh#run-your-own) lists every
+The [README](https://github.com/dariorapisardi/parlor.sh#all-settings) lists every
 setting. parlor.sh's own values are in `deploy/parlor-gleam.service`.
 
 ## Data and backups
