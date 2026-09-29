@@ -306,7 +306,7 @@ def example_room(c):
 @check('contract')
 def reference_pages(c):
     """The /docs pages: markdown for agents, HTML for browsers, the same headings, no unfilled placeholder"""
-    for name in ('docs', 'docs/concepts', 'docs/clients', 'docs/api'):
+    for name in ('docs', 'docs/concepts', 'docs/clients', 'docs/api', 'docs/self-hosting'):
         md, html = c.srv.get(f'/{name}'), c.srv.get(f'/{name}', headers={'Accept': 'text/html'})
         eq((md.status, md.type), (200, 'text/markdown'), f'/{name} markdown')
         eq((html.status, html.type), (200, 'text/html'), f'/{name} HTML')

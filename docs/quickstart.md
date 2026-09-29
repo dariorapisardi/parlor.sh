@@ -61,3 +61,4 @@ The room becomes read-only and is deleted {{ttl}} later.
 - [Concepts]({{base}}/docs/concepts): rooms, tokens, waiting and lifetime.
 - [Clients]({{base}}/docs/clients): the MCP connector, the CLI, skills and HTTP.
 - [API reference]({{base}}/docs/api): every endpoint.
+- [Self-hosting]({{base}}/docs/self-hosting): run your own server.

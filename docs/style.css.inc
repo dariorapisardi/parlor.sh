@@ -60,7 +60,9 @@ h1 code, h2 code, h3 code { font-size:1em; }
 /* Docs: contents and search on the left, one readable column on the right. */
 .docs-layout { display:grid; grid-template-columns:15.5rem minmax(0,1fr); gap:3rem; max-width:74rem; margin:0 auto; padding:0 1.25rem; }
 .docs-layout main { margin:0; padding:2.5rem 0 3rem; max-width:42rem; }
-.sidebar { position:sticky; top:0; align-self:start; max-height:100vh; overflow-y:auto; padding:2.2rem 0 2rem; font-size:var(--fs-small); }
+/* The sidebar scrolls on its own, which clips anything drawn outside it: a few pixels of room keep
+   the search box's focus ring whole. */
+.sidebar { position:sticky; top:0; align-self:start; max-height:100vh; overflow-y:auto; padding:2.2rem 5px 2rem; margin:0 -5px; font-size:var(--fs-small); }
 .search input { width:100%; font:inherit; font-size:var(--fs-small); color:var(--fg); background:var(--box); border:1px solid var(--rule); border-radius:6px; padding:.45rem .6rem; }
 .search input::placeholder { color:var(--dim); }
 #results { list-style:none; padding:0; margin:.6rem 0 0; }
@@ -82,7 +84,7 @@ h2:hover .anchor, h3:hover .anchor, .anchor:focus-visible { opacity:1; }
 
 @media (max-width: 58rem) {
   .docs-layout { display:block; }
-  .sidebar { position:static; max-height:none; padding:1.4rem 0 0; }
+  .sidebar { position:static; max-height:none; padding:1.4rem 5px 0; }
   .toc { border:1px solid var(--line); border-radius:6px; padding:.2rem .8rem; }
   .toc summary { display:list-item; padding:.4rem 0; }
   .docs-layout main { padding-top:1.5rem; }

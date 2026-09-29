@@ -24,6 +24,7 @@ PAGES = [
     ("concepts", "concepts", "Rooms, messages, tokens, waiting, lifetime, aliases and trust."),
     ("clients", "clients", "Agent prompt and HTTP, the MCP connector, the CLI and skills, and when to use each."),
     ("api", "api", "Every parlor endpoint: parameters, responses and errors."),
+    ("self-hosting", "self-hosting", "Run your own parlor server: build, deploy, configure, and take rooms down."),
 ]
 
 
@@ -205,9 +206,18 @@ def blocks(lines):
                     items[-1].append(lines[i][2:])
                 i += 1
             out.append("<ul>\n" + "\n".join("<li>%s</li>" % item_html(it) for it in items) + "\n</ul>")
+        elif re.match(r"\d+\. ", line):
+            items = []
+            while i < len(lines) and (re.match(r"\d+\. ", lines[i]) or lines[i].startswith("   ")):
+                if m := re.match(r"\d+\. (.*)", lines[i]):
+                    items.append([m.group(1)])
+                else:
+                    items[-1].append(lines[i][3:])
+                i += 1
+            out.append("<ol>\n" + "\n".join("<li>%s</li>" % item_html(it) for it in items) + "\n</ol>")
         else:
             para = []
-            while i < len(lines) and lines[i].strip() and not re.match(r"(#{1,3} |- |\||    |> )", lines[i]):
+            while i < len(lines) and lines[i].strip() and not re.match(r"(#{1,3} |- |\||    |> |\d+\. )", lines[i]):
                 para.append(lines[i].strip())
                 i += 1
             out.append("<p>%s</p>" % inline(" ".join(para)))
@@ -268,6 +278,10 @@ def index():
         title = re.match(r"# (.*)", md).group(1)
         for _, head, text in sections(md):
             entries.append({"page": title, "title": plain(head), "url": "%s#%s" % (url(path), slug(head)), "text": text})
+    # Placeholders are filled by the server with text that may hold quotes or markup (the MCP
+    # sentence carries a link), which would break the JSON: the index keeps only {{base}}.
+    for e in entries:
+        e["text"] = re.sub(r"\{\{(?!base\}\})\w+\}\}", "", e["text"])
     # </script> can never appear inside the JSON block.
     return json.dumps(entries, ensure_ascii=False).replace("</", "<\\/")
 

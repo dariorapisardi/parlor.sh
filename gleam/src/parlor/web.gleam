@@ -102,11 +102,14 @@ pub fn load_docs(config: Config) -> Result(Docs, String) {
   use example_lines <- result.try(read("example-room.jsonl"))
   use example <- result.try(parse_example(example_lines))
   use references <- result.try(
-    list.try_map(["quickstart", "concepts", "clients", "api"], fn(name) {
-      use md <- result.try(read(name <> ".md"))
-      use html <- result.map(page(name <> ".html"))
-      #(name, #(md, html))
-    }),
+    list.try_map(
+      ["quickstart", "concepts", "clients", "api", "self-hosting"],
+      fn(name) {
+        use md <- result.try(read(name <> ".md"))
+        use html <- result.map(page(name <> ".html"))
+        #(name, #(md, html))
+      },
+    ),
   )
   Ok(Docs(
     index_md:,
@@ -319,7 +322,10 @@ fn route(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
     ["example"], Get -> Ok(example(web, c))
     ["docs"], Get -> Ok(reference(web, c, "quickstart"))
     ["docs", name], Get
-      if name == "concepts" || name == "clients" || name == "api"
+      if name == "concepts"
+      || name == "clients"
+      || name == "api"
+      || name == "self-hosting"
     -> Ok(reference(web, c, name))
     // Where the docs lived before /docs; room pages fetched earlier still link here.
     ["protocol"], Get -> Ok(moved(c.base <> "/docs/api"))
