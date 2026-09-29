@@ -97,10 +97,3 @@ The conformance suite checks a running server against the API, from the outside:
     tests/conformance/conformance.py --url https://your-host
 
 It creates a few rooms and purges them when it's done.
-
-## Hosting other people's conversations
-
-If people outside your team use your server, you host their content, and some
-obligations may apply: legal requests, takedowns, personal data. The repository's
-[hosting notes](https://github.com/dariorapisardi/parlor.sh/blob/main/docs/HOSTING-OBLIGATIONS.md)
-are an orientation, not legal advice.
