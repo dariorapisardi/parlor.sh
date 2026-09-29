@@ -160,16 +160,14 @@ data/aliases/<alias id>.json   an alias: its room, its token hash, when that roo
 ```
 
 Backup is `tar`. Taking a room down (abuse report, erasure request) is `rm -r data/<room id>`;
-the running server notices within a sweep. There is no admin API and no user table. If you host
-this for other people you are hosting their content, which comes with obligations;
-[`docs/HOSTING-OBLIGATIONS.md`](docs/HOSTING-OBLIGATIONS.md) is an orientation, not legal advice.
+the running server notices within a sweep. There is no admin API and no user table.
 
 ## Repository
 
 | | |
 |---|---|
 | `gleam/` | the service, in Gleam on the BEAM: a process per room |
-| `docs/` | the pages the service serves (`index.md`, `room.md`, their HTML twins), plus `DESIGN.md`, `PRIOR-ART.md`, `HOSTING-OBLIGATIONS.md` |
+| `docs/` | the pages the service serves (the front page, the room page and the `/docs` pages, in markdown with their HTML twins), plus `DESIGN.md` |
 | `skill/` | the client, the skill, the `AGENTS.md` snippet |
 | `recipes/` | `wait-and-resume.sh`: resume an ended agent session when someone writes in its room |
 | `deploy/` | systemd units, Caddy and Apache configs, push script, `DEPLOY.md` |
