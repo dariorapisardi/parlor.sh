@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build the HTML twins of the docs pages from their markdown.
 
-docs/clients.md and docs/protocol.md are what agents read; docs/clients.html and
-docs/protocol.html are the same text for browsers, generated here so that the two never
+docs/{quickstart,concepts,clients,api}.md are what agents read at /docs; the .html files
+of the same names are the same text for browsers, generated here so that the two never
 drift. Each HTML page gets the docs sidebar (both pages and their sections) and a search
 index of every section of both, embedded so search works without a server round trip.
 `{{placeholders}}` pass through untouched: the server fills them in both representations.
@@ -18,11 +18,17 @@ import html, json, re, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-# In sidebar order: the guide first, then the reference.
+# In sidebar order: (file name, path under /docs, description).
 PAGES = [
-    ("clients", "Using parlor", "Ways to use parlor: HTTP, the CLI, the MCP connector, the skill, and when to use each."),
-    ("protocol", "Reference", "The parlor interface: every operation, its arguments, results and errors."),
+    ("quickstart", "", "Get two agents talking in a parlor room, with nothing but prompts."),
+    ("concepts", "concepts", "Rooms, messages, tokens, waiting, lifetime, aliases and trust."),
+    ("clients", "clients", "Agent prompt and HTTP, the MCP connector, the CLI and skills, and when to use each."),
+    ("api", "api", "Every parlor endpoint: parameters, responses and errors."),
 ]
+
+
+def url(path):
+    return "{{base}}/docs" + ("/" + path if path else "")
 
 TEMPLATE = """<!doctype html>
 <html lang="en">
@@ -31,7 +37,7 @@ TEMPLATE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title} · parlor.sh</title>
 <meta name="description" content="{description}">
-<link rel="alternate" type="text/markdown" href="{{{{base}}}}/{name}">
+<link rel="alternate" type="text/markdown" href="{url}">
 <meta name="color-scheme" content="light dark">
 <style>{{{{style}}}}</style>
 {{{{theme}}}}
@@ -95,6 +101,18 @@ TEMPLATE = """<!doctype html>
       a.appendChild(w); a.appendChild(t); a.appendChild(s); li.appendChild(a); out.appendChild(li);
     }});
   }}
+  // Copy buttons on code and prompts; without a clipboard there are none, and the text still selects.
+  if (navigator.clipboard) document.querySelectorAll("main.doc pre").forEach(function (pre) {{
+    var text = pre.textContent, b = document.createElement("button");
+    pre.classList.add("prompt");
+    b.type = "button"; b.className = "copy"; b.textContent = "copy"; b.setAttribute("aria-label", "Copy");
+    b.addEventListener("click", function () {{
+      navigator.clipboard.writeText(text).then(function () {{
+        b.textContent = "copied"; setTimeout(function () {{ b.textContent = "copy"; }}, 1500);
+      }});
+    }});
+    pre.appendChild(b);
+  }});
   q.addEventListener("input", show);
   q.addEventListener("keydown", function (ev) {{
     if (ev.key === "Enter") {{ var a = out.querySelector("a"); if (a) location.href = a.href; }}
@@ -161,6 +179,12 @@ def blocks(lines):
                 ident = slug(text)
                 out.append('<h%d id="%s">%s<a class="anchor" href="#%s" aria-label="Link to this section">#</a></h%d>' % (level, ident, inline(text), ident, level))
             i += 1
+        elif line.startswith("> ") or line == ">":
+            quote = []
+            while i < len(lines) and (lines[i].startswith("> ") or lines[i] == ">"):
+                quote.append(lines[i][2:])
+                i += 1
+            out.append('<div class="note">%s</div>' % blocks(quote))
         elif line.startswith("|"):
             rows = []
             while i < len(lines) and lines[i].startswith("|"):
@@ -183,7 +207,7 @@ def blocks(lines):
             out.append("<ul>\n" + "\n".join("<li>%s</li>" % item_html(it) for it in items) + "\n</ul>")
         else:
             para = []
-            while i < len(lines) and lines[i].strip() and not re.match(r"(#{1,3} |- |\||    )", lines[i]):
+            while i < len(lines) and lines[i].strip() and not re.match(r"(#{1,3} |- |\||    |> )", lines[i]):
                 para.append(lines[i].strip())
                 i += 1
             out.append("<p>%s</p>" % inline(" ".join(para)))
@@ -212,14 +236,13 @@ def sections(md):
 
 
 def toc(current):
-    """Both pages; the current one expanded to its sections (and the reference to its operations)."""
-    out = []
-    for name, group, _ in PAGES:
+    """The docs pages; the current one expanded to its sections."""
+    out = ["<ul>"]
+    for name, path, _ in PAGES:
         md = (HERE / (name + ".md")).read_text()
         title = re.match(r"# (.*)", md).group(1)
         cur = ' aria-current="page"' if name == current else ""
-        out.append('<p class="group">%s</p>' % group)
-        out.append('<ul><li><a class="page" href="{{base}}/%s"%s>%s</a>' % (name, cur, html.escape(title)))
+        out.append('<li><a class="page" href="%s"%s>%s</a>' % (url(path), cur, html.escape(title)))
         if name == current:
             groups = []  # [(h2 title, [h3 titles])]
             for lvl, head, _ in sections(md):
@@ -233,17 +256,18 @@ def toc(current):
                 inner = "<ul>%s</ul>" % "".join("<li>%s</li>" % link(h) for h in subs) if subs else ""
                 lis.append("<li>%s%s</li>" % (link(head), inner))
             out.append("<ul>\n%s\n</ul>" % "\n".join(lis))
-        out.append("</li></ul>")
+        out.append("</li>")
+    out.append("</ul>")
     return "\n".join(out)
 
 
 def index():
     entries = []
-    for name, group, _ in PAGES:
+    for name, path, _ in PAGES:
         md = (HERE / (name + ".md")).read_text()
         title = re.match(r"# (.*)", md).group(1)
         for _, head, text in sections(md):
-            entries.append({"page": title, "title": plain(head), "url": "{{base}}/%s#%s" % (name, slug(head)), "text": text})
+            entries.append({"page": title, "title": plain(head), "url": "%s#%s" % (url(path), slug(head)), "text": text})
     # </script> can never appear inside the JSON block.
     return json.dumps(entries, ensure_ascii=False).replace("</", "<\\/")
 
@@ -251,8 +275,8 @@ def index():
 def build(name):
     md = (HERE / (name + ".md")).read_text()
     title = re.match(r"# (.*)", md).group(1)
-    description = dict((n, d) for n, _, d in PAGES)[name]
-    return TEMPLATE.format(title=html.escape(title), description=html.escape(description), name=name,
+    path, description = dict((n, (p, d)) for n, p, d in PAGES)[name]
+    return TEMPLATE.format(title=html.escape(title), description=html.escape(description), url=url(path),
                            toc=toc(name), body=blocks(md.split("\n")), index=index())
 
 

@@ -1,0 +1,7 @@
+Using only the reference at BASE/docs/api (fetch it with curl; do not look for source code anywhere), write client.py: a Python 3 script, standard library only, that
+1. creates a room as host "alice",
+2. joins it as a second participant "bob",
+3. starts a waiting read as alice in a thread, then posts "ping" as bob,
+4. prints what alice's wait returned (it must contain bob's "ping"),
+5. has alice close the room with a last message "done", and checks that a post from bob afterwards fails with the error code the reference documents.
+Run it until it works. Then write notes.md: anything in the reference that was ambiguous, wrong, or that you had to guess.

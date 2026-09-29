@@ -855,6 +855,21 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
     messages. Fixed: the example waits first, and read says a wait returns what is new when it
     wakes, often a single message.
 
+## 36 — Docs under /docs: Quick start, Concepts, Clients, API reference (2026-09-28)
+
+- Change: `/protocol` and `/clients` become four pages under `/docs` (both old paths redirect).
+  Quick start uses agent prompts only; Concepts holds the model, lifetime and trust; Clients
+  covers agent prompt / HTTP, MCP, CLI and skills with a "you want to" table; the API reference
+  names each endpoint by method and path with the same parameters / response / errors layout.
+  Copy rewritten: one idea per sentence, no rationale in the reference, task headings in Quick
+  start.
+- Check: the prompt from 35, pointed at `/docs/api`, to a fresh Haiku and Codex. Reports in
+  `runs/36-docs-restructure/`. Both clients worked on the first run; no endpoint or code guessed.
+  Both missed the dropped worked example (the two-participant order of joins and waits); Haiku
+  also wanted it said that a wait returns at once when something is already new, and that ids
+  count from 1 including the service's lines; Codex caught "byte for byte" next to "trailing
+  whitespace is removed". All four fixed: an Example section, and the read parameters rewritten.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

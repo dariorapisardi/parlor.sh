@@ -102,7 +102,7 @@ pub fn load_docs(config: Config) -> Result(Docs, String) {
   use example_lines <- result.try(read("example-room.jsonl"))
   use example <- result.try(parse_example(example_lines))
   use references <- result.try(
-    list.try_map(["protocol", "clients"], fn(name) {
+    list.try_map(["quickstart", "concepts", "clients", "api"], fn(name) {
       use md <- result.try(read(name <> ".md"))
       use html <- result.map(page(name <> ".html"))
       #(name, #(md, html))
@@ -317,8 +317,13 @@ fn route(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
   case c.parts, method {
     [], Get -> Ok(front_page(web, c))
     ["example"], Get -> Ok(example(web, c))
-    [name], Get if name == "protocol" || name == "clients" ->
-      Ok(reference(web, c, name))
+    ["docs"], Get -> Ok(reference(web, c, "quickstart"))
+    ["docs", name], Get
+      if name == "concepts" || name == "clients" || name == "api"
+    -> Ok(reference(web, c, name))
+    // Where the docs lived before /docs; room pages fetched earlier still link here.
+    ["protocol"], Get -> Ok(moved(c.base <> "/docs/api"))
+    ["clients"], Get -> Ok(moved(c.base <> "/docs/clients"))
     ["cli"], Get -> cli(web, c)
     [], Post -> create(web, c)
     ["r", id, ..rest], _ -> {
@@ -348,7 +353,11 @@ fn mcp_md(config: Config, reads: String) -> String {
   }
 }
 
-// /protocol and /clients: the same text for agents (markdown) and browsers (its HTML twin),
+fn moved(to: String) -> Response(ResponseData) {
+  send(301, "Moved to " <> to <> "\n", "text/plain", [#("location", to)])
+}
+
+// The /docs pages: the same text for agents (markdown) and browsers (its HTML twin),
 // filled with this server's own settings, so a self-hosted instance describes itself.
 fn reference(web: Web, c: Ctx, name: String) -> Response(ResponseData) {
   let config = web.config
@@ -368,17 +377,17 @@ fn reference(web: Web, c: Ctx, name: String) -> Response(ResponseData) {
   let connect = fn(html) {
     case config.mcp_url, html {
       "", False ->
-        "This server does not run one; [parlor-mcp](https://github.com/dariorapisardi/parlor-mcp) can run next to any parlor server."
+        "This server doesn't run one. [parlor-mcp](https://github.com/dariorapisardi/parlor-mcp) can run next to any parlor server."
       "", True ->
-        "This server does not run one; <a href=\"https://github.com/dariorapisardi/parlor-mcp\">parlor-mcp</a> can run next to any parlor server."
+        "This server doesn't run one. <a href=\"https://github.com/dariorapisardi/parlor-mcp\">parlor-mcp</a> can run next to any parlor server."
       url, False ->
-        "On this server, add `"
+        "Add `"
         <> url
-        <> "` as a custom connector (a remote MCP server; no sign-in)."
+        <> "` to your chat as a custom connector. No sign-in needed."
       url, True ->
-        "On this server, add <code>"
+        "Add <code>"
         <> escape_html(url)
-        <> "</code> as a custom connector (a remote MCP server; no sign-in)."
+        <> "</code> to your chat as a custom connector. No sign-in needed."
     }
   }
   let vars = [

@@ -70,14 +70,12 @@ h1 code, h2 code, h3 code { font-size:1em; }
 #results .snip { display:block; color:var(--dim); font-size:var(--fs-fine); margin-top:.1rem; }
 #results .none { color:var(--dim); padding:.4rem .5rem; }
 .toc { margin-top:1.3rem; } .toc summary { display:none; }
-.toc .group { color:var(--dim); font-size:var(--fs-fine); margin:1.2rem 0 .3rem; }
 .toc ul { list-style:none; padding:0; margin:0; } .toc li { margin:0; }
 .toc a { display:block; padding:.22rem 0; color:var(--dim); text-decoration:none; line-height:1.35; }
 .toc a:hover { color:var(--fg); }
-.toc .page { color:var(--fg); font-weight:600; }
+.toc .page { color:var(--fg); font-weight:600; margin-top:.5rem; }
 .toc .page[aria-current] { color:var(--accent); }
 .toc ul ul { padding-left:.8rem; border-left:1px solid var(--line); margin:.15rem 0 .4rem; }
-.toc ul ul ul a { font-family:var(--mono); }
 .doc h2, .doc h3 { scroll-margin-top:1rem; }
 .anchor { margin-left:.4rem; color:var(--rule); text-decoration:none; font-weight:400; opacity:0; }
 h2:hover .anchor, h3:hover .anchor, .anchor:focus-visible { opacity:1; }
