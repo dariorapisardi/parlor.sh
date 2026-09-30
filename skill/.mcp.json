@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "parlor": {
+      "type": "http",
+      "url": "https://parlor.sh/mcp"
+    }
+  }
+}

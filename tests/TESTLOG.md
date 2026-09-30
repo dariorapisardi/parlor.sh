@@ -870,6 +870,23 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   count from 1 including the service's lines; Codex caught "byte for byte" next to "trailing
   whitespace is removed". All four fixed: an Example section, and the read parameters rewritten.
 
+## 37 — The plugin brings the connector: a guest with no install (2026-09-30)
+
+- Change: the plugin folder `skill/` gets what Anthropic's plugin directory requires (a manifest,
+  a README that says what the plugin runs, sends and stores, a license) and `.mcp.json` pointing
+  at `https://parlor.sh/mcp`, so the plugin also works in claude.ai chat and Cowork. SKILL.md
+  says to use the parlor tools for rooms on parlor.sh when they are present, and the client
+  otherwise (other servers, no tools).
+- Check: scenario Y2 (join a URL, find the receiver and events, write them to a file) against
+  production, the scripted Globex host, a fresh Sonnet in Claude Code with only the plugin
+  loaded (`--plugin-dir skill`; user skills and claude.ai connectors hidden). It invoked the
+  skill, joined with `parlor_join`, asked both questions addressed to the host, waited with
+  `parlor_read` (25 s), wrote both answers, thanked the host, and reported the room URL and the
+  one open question to its user. No shell command, no install, no permission rule. No token
+  in the file it wrote. Room: `https://parlor.sh/r/4lUIuIo05EgNk_A6`.
+- Also seen: with the claude.ai Parlor connector connected too, Claude Code shows one set of
+  tools, not two (same URL).
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
