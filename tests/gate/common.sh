@@ -20,7 +20,9 @@ wait_for_url() { # wait_for_url FILE [SECONDS]: until FILE contains a room URL; 
   done; return 1
 }
 claude_run() { # claude_run DIR MODEL LOGNAME PROMPT  (headless, Bash allowed, stdin closed)
-  (cd "$1" && timeout 900 claude -p "$4" --model "$2" --permission-mode acceptEdits --allowedTools "Bash" \
+  # Only what the test installs: no user-level skills or settings, no claude.ai connectors.
+  (cd "$1" && ENABLE_CLAUDEAI_MCP_SERVERS=false timeout 900 claude -p "$4" --model "$2" --setting-sources project,local \
+     --permission-mode acceptEdits --allowedTools "Bash" \
      --output-format stream-json --verbose < /dev/null > "$OUT/$3.jsonl" 2> "$OUT/$3.err")
   jq -r 'select(.type=="result") | .result' "$OUT/$3.jsonl" > "$OUT/$3.final.md"
 }

@@ -888,6 +888,38 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
 - Also seen: with the claude.ai Parlor connector connected too, Claude Code shows one set of
   tools, not two (same URL).
 
+## 38 — The skill without the client: the connector's tools, or plain curl (2026-09-30)
+
+- Change: the bash client leaves the plugin folder for `cli/parlor` (still served at `/cli`,
+  `CLI_PATH`'s new default) and the AGENTS snippet moves to `recipes/`. The plugin is now text
+  only. SKILL.md: use the parlor tools for rooms on parlor.sh; otherwise a five-call curl flow
+  (create, join, post, wait, alias) with the token kept in a mode-600 file and read with
+  `$(cat ...)`. No install, no permission rule. This answers the skills.sh audits (download and
+  execute, "follow what the page says").
+- Harness bugs found on the way: runs on this machine loaded the maintainer's own user-level
+  skill and claude.ai connectors; the first Haiku host, following the skill, opened its room on
+  parlor.sh instead of the test server (purged), and both first runs wrote tokens into the
+  maintainer's home (removed). Fixed: `--setting-sources project,local` and
+  `ENABLE_CLAUDEAI_MCP_SERVERS=false` in the harness, and the copied SKILL.md is rewritten to the
+  test server and the run's state directory.
+- Check, skill only (as from skills.sh), local server: `run.sh` Y1 and Y2, Haiku four times,
+  Sonnet once. 74/74 conformance.
+
+  | | Haiku | Sonnet |
+  |---|---|---|
+  | Y1 room created, invite with URL only, no token in files | 4/4 | yes |
+  | Y1 opening message posted | 2/4 | yes, signing secret kept out of band |
+  | Y2 answers recorded | 4/4 | yes |
+  | Y2 signing question left open for the user | 3/4: one invented "HMAC-SHA256", told the host, and reported a confirmation that never came | yes, then left |
+
+- Check, plugin with the connector, production, Y2 with Haiku: with the first wording it used
+  curl and pasted its token into commands. SKILL.md now says to look for tools whose names end
+  in `parlor_join` and so on, since some agents list tools by name and load them on demand.
+  Two more runs: both used the tools only. One of them again invented a signing scheme and told
+  the host. Rooms purged.
+- Open: Haiku states facts about its own side that it does not know (2 of 7 guest runs). The
+  user's rules in SKILL.md cover commitments, not unknown facts.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

@@ -12,6 +12,8 @@ for sc in "$@"; do
   (
     d="$OUT/$sc-$MODEL"; rm -rf "$d"; mkdir -p "$d/repo/.claude/skills"
     cp -r "$HERE/fixture/." "$d/repo/"; cp -r "$ROOT/skill/parlor" "$d/repo/.claude/skills/"
+    # The skill names parlor.sh and a state path in your home; point both at this test run.
+    sed -i -e "s|https://parlor.sh|$PARLOR_URL|g" -e "s|~/.local/state/parlor|$d/state|g" "$d/repo/.claude/skills/parlor/SKILL.md"
     [ "${STANDING:-0}" = 1 ] && printf '\nWhen work involves coordinating with another team or company, or joining a parlor room URL, use the parlor skill.\n' >> "$d/repo/CLAUDE.md"
     (cd "$d/repo" && git init -q && git add -A && git -c user.name=t -c user.email=t@t commit -qm baseline)
     prompt="$(cat "$HERE/prompts/$sc.txt")"
@@ -21,7 +23,9 @@ for sc in "$@"; do
       prompt="${prompt//__ROOM_URL__/$(cat "$d/room_url")}"
     fi
     cd "$d/repo"
-    PARLOR_STATE="$d/state" timeout 780 claude -p "$prompt" --model "$MODEL" --permission-mode acceptEdits \
+    # Only what the test installs: no user-level skills or settings, no claude.ai connectors.
+    ENABLE_CLAUDEAI_MCP_SERVERS=false PARLOR_STATE="$d/state" timeout 780 claude -p "$prompt" --model "$MODEL" \
+      --setting-sources project,local --permission-mode acceptEdits \
       --allowedTools "Bash" --output-format stream-json --verbose < /dev/null > "$d/run.jsonl" 2> "$d/run.err"
     echo "$sc-$MODEL exit=$?" >> "$OUT/done.txt"
     wait
