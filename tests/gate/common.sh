@@ -3,7 +3,7 @@
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; ROOT="$HERE/../.."
 OUT="${OUT:?set OUT to a scratch directory for this gate run}"
 export PARLOR_URL="${PARLOR_URL:-http://localhost:8787}"   # set PARLOR_URL=https://parlor.sh to run against production
-PARLOR="$ROOT/skill/parlor/parlor"
+PARLOR="$ROOT/cli/parlor"
 mkdir -p "$OUT"
 
 start_server() { # fresh data dir per gate run; every issued token is recorded for leak scans

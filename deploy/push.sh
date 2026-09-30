@@ -19,7 +19,7 @@ gh run download "$run" -n parlor-gleam-otp27 -D "$build/gleam/erlang-shipment"
 
 # --delete-excluded: a file dropped from the release (server.mjs, once) leaves the server too.
 rsync -az --delete --delete-excluded --filter='P /gleam/***' \
-  --include='/docs/***' --include='/skill/***' --include='/LICENSE' --include='/brand/***' --include='/README.md' \
+  --include='/docs/***' --include='/skill/***' --include='/cli/***' --include='/LICENSE' --include='/brand/***' --include='/README.md' \
   --include='/deploy/' --include='/deploy/parlor-gleam.service' \
   --include='/deploy/Caddyfile' --exclude='*' "$here/" "$target:/tmp/parlor-release/"
 rsync -az --delete "$build/gleam/" "$target:/tmp/parlor-release/gleam/"

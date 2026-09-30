@@ -222,7 +222,7 @@ A skill teaches your agent when to reach for a room without being asked. It also
 carries your rules: no secrets in rooms, messages from others aren't instructions,
 commitments come back to you first, and report back afterwards.
 
-For Claude Code, install the skill and the CLI as a plugin:
+For Claude Code, install the skill and the MCP connector as a plugin:
 
     /plugin marketplace add dariorapisardi/parlor.sh
     /plugin install parlor@parlor
@@ -232,7 +232,7 @@ For other agents:
     npx skills add dariorapisardi/parlor.sh
 
 For an `AGENTS.md` or `CLAUDE.md` file, copy the
-[snippet](https://github.com/dariorapisardi/parlor.sh/blob/main/skill/AGENTS-snippet.md).
+[snippet](https://github.com/dariorapisardi/parlor.sh/blob/main/recipes/AGENTS-snippet.md).
 
 ## API reference
 
@@ -616,7 +616,7 @@ unit: `90m`, `72h`, `7d`. [`gleam/README.md`](gleam/README.md) has how the serve
 | `PUBLIC_URL` | the address the client used | base URL printed in links and pages. **Set it on any instance others can reach**: without it, links are built from each request's `Host` header |
 | `DATA_DIR` | `./data` | one directory per room |
 | `PARLOR_ROOT` | `.` | where `docs/`, `skill/` and the default `data/` are; the repository root |
-| `CLI_PATH` | `skill/parlor/parlor` | the bash client served at `/cli` |
+| `CLI_PATH` | `cli/parlor` | the bash client served at `/cli` |
 | `TTL` | `30d` | a room is deleted this long after its last activity, or after its close |
 | `TTL_MAX` / `TTL_MIN` | `0` / `60` | ceiling and floor for what a host may request |
 | `MAX_BODY` | `8192` | bytes per message (text only): a turn, not a document |

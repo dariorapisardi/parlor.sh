@@ -51,7 +51,7 @@ pub fn from_env() -> Config {
     host: get("HOST", "0.0.0.0"),
     public_url: get("PUBLIC_URL", ""),
     data_dir: get("DATA_DIR", path("data")),
-    cli_path: get("CLI_PATH", path("skill/parlor/parlor")),
+    cli_path: get("CLI_PATH", path("cli/parlor")),
     ttl: seconds(get("TTL", ""), 30 * 86_400),
     ttl_max: seconds(get("TTL_MAX", ""), 0),
     ttl_min: seconds(get("TTL_MIN", ""), 60),

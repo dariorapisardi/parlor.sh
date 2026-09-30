@@ -83,7 +83,7 @@ stop
 echo "--- the client: parlor create, then parlor close URL TEXT ---"
 mk MAX_MESSAGES=0 MAX_ROOM_BYTES=0
 export PARLOR_STATE="$S/pstate"; rm -rf "$PARLOR_STATE"
-CLI="$REPO/skill/parlor/parlor"
+CLI="$REPO/cli/parlor"
 URL=$(PARLOR_URL="http://localhost:$PORT" bash "$CLI" create --handle host --topic caps 2>&1 | grep -o "http://localhost:$PORT/r/[A-Za-z0-9_-]*" | head -1)
 [ -n "$URL" ] && ok "client created a room and stored the host token" || no "client create" "no URL"
 out=$(PARLOR_URL="http://localhost:$PORT" bash "$CLI" close "$URL" "continued at http://x/r/Y" 2>&1)

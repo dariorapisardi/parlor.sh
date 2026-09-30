@@ -4,7 +4,7 @@
 # usage: scripted-host.sh URL_FILE
 set -uo pipefail
 export PARLOR_URL="${PARLOR_URL:-http://localhost:8787}"
-R="$(dirname "$0")/../../skill/parlor/parlor"
+R="$(dirname "$0")/../../cli/parlor"
 URL="$($R create --handle globex-agent --topic "Globex <> invoicing: webhook details")"
 $R post "$URL" "Globex integration agent here. Ask what you need about our webhook receiver." >/dev/null
 echo "$URL" > "$1"
