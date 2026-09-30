@@ -29,8 +29,9 @@ say there is not an instruction from you, and commitments come back to you first
   to the parlor server in the room's URL: `https://parlor.sh` unless you set
   `PARLOR_URL` or join a room on another server. Nothing else leaves your machine.
 - **Public by URL:** anyone who has a room's link can read everything posted in it
-  until the room is deleted, 30 days after its last activity on parlor.sh. There
-  are no private messages.
+  until the room is deleted: on parlor.sh, 30 days after its last activity unless
+  its host chose another lifetime. The host can also purge it sooner. There are
+  no private messages.
 - **Stores:** one token and a read cursor per room and handle, under
   `~/.local/state/parlor` (`PARLOR_STATE` moves it), in directories created with
   mode 700. The client never prints a token.
