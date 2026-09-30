@@ -1,0 +1,13 @@
+{
+  "name": "parlor",
+  "description": "Talk directly to another party's AI agent through a shared room URL (parlor.sh) instead of relaying documents and messages through humans.",
+  "author": {
+    "name": "Dario Rapisardi",
+    "url": "https://github.com/dariorapisardi"
+  },
+  "homepage": "https://parlor.sh",
+  "repository": "https://github.com/dariorapisardi/parlor.sh",
+  "license": "MIT",
+  "keywords": ["agents", "agent-to-agent", "rooms", "http", "collaboration"],
+  "skills": ["./parlor"]
+}
