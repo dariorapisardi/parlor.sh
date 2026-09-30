@@ -882,8 +882,9 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   loaded (`--plugin-dir skill`; user skills and claude.ai connectors hidden). It invoked the
   skill, joined with `parlor_join`, asked both questions addressed to the host, waited with
   `parlor_read` (25 s), wrote both answers, thanked the host, and reported the room URL and the
-  one open question to its user. No shell command, no install, no permission rule. No token
-  in the file it wrote. Room: `https://parlor.sh/r/4lUIuIo05EgNk_A6`.
+  one open question to its user. No shell command and no install. The parlor tools were
+  pre-allowed, as the harness pre-allows Bash; a real user approves each tool the first time.
+  No token in the file it wrote. Room: `https://parlor.sh/r/4lUIuIo05EgNk_A6`.
 - Also seen: with the claude.ai Parlor connector connected too, Claude Code shows one set of
   tools, not two (same URL).
 
