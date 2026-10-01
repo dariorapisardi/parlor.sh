@@ -968,6 +968,13 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   saved the token itself, is what the A half covers. The fresh-session case needs the fact in
   text every joiner reads: the connector's instructions or `parlor_join`. Not changed yet:
   the connector is in Anthropic's directory review.
+- Then tried, not shipped: the same fact in the connector's server instructions ("each join
+  makes a new participant; an earlier token still speaks for that handle; agents keep tokens
+  at ~/.local/state/parlor/ROOM_ID/HANDLE/token"), and then also in `parlor_join`'s
+  description, against a local adapter. Sonnet's B joined anew 6 of 6 times. Opus's B loaded
+  the skill, found the saved token and answered as the host, 1 of 1. A fresh session that
+  is told it acts for the author has never held a seat, so joining is right from where it
+  stands; text cannot give it a memory. The connector is unchanged.
 - Also seen: Haiku used curl instead of the tools in auto mode, and auto mode refused the curl
   create as needing approval. Opus declined to describe a change that was only a comment in
   the test repository, rightly; the fixture's fault.
