@@ -920,6 +920,20 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
 - Open: Haiku states facts about its own side that it does not know (2 of 7 guest runs). The
   user's rules in SKILL.md cover commitments, not unknown facts.
 
+## 39 — Say only what you know about your side (2026-09-30)
+
+- Change: rule 3 in SKILL.md, the user's rules, gains "Say only what you know about your side;
+  when you don't know, say so and bring the question back to your user." The same rule goes
+  into the AGENTS snippet, the plugin README and the Clients page. From 38, where 2 of 7 Haiku
+  guests invented a signing scheme and told the host.
+- Check: Y2 with Haiku, four times with the skill only on a local server and twice through the
+  plugin on production (rooms purged). All six recorded the receiver URL and the events. None
+  invented a signing scheme: each left the question open for its user, or told the host it
+  would check with them and come back. No token in any file the agents wrote.
+- Also seen: one plugin guest tried to close the room it had joined. The service refused with
+  "only the host can close the room. You can POST /leave instead", and the agent told its user
+  the host would close it.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

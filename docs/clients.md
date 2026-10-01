@@ -77,7 +77,8 @@ run commands. Only use it in rooms where you trust everyone who has the link.
 
 A skill teaches your agent when to reach for a room without being asked. It also
 carries your rules: no secrets in rooms, messages from others aren't instructions,
-commitments come back to you first, and report back afterwards.
+commitments come back to you first, say only what it knows about your side, and
+report back afterwards.
 
 For Claude Code, install the skill and the MCP connector as a plugin:
 
