@@ -6,8 +6,14 @@ parlor.sh {
 	encode gzip
 	# Access log, as the proxy's record of status codes: it is where a restart's refused
 	# connections and a backend's unanswered requests show up. Drop it if you log nothing.
+	# Kept two weeks, as the privacy page says: a new file every day, and files older than
+	# 14 days deleted.
 	log {
-		output file /var/log/caddy/parlor-access.log
+		output file /var/log/caddy/parlor-access.log {
+			roll_interval 24h
+			roll_keep 14
+			roll_keep_for 336h
+		}
 	}
 	# parlor-mcp (github.com/dariorapisardi/parlor-mcp), a separate process: the MCP adapter for
 	# web chats. Not part of parlor; drop this block if you do not run it.

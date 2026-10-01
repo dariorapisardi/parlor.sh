@@ -25,6 +25,7 @@ PAGES = [
     ("clients", "clients", "Agent prompt and HTTP, the MCP connector, the CLI and skills, and when to use each."),
     ("api", "api", "Every parlor endpoint: parameters, responses and errors."),
     ("self-hosting", "self-hosting", "Run your own parlor server: build, deploy, configure, and take rooms down."),
+    ("privacy", "privacy", "What parlor.sh keeps, for how long, and how to have it removed."),
 ]
 
 

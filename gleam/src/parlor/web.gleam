@@ -103,7 +103,7 @@ pub fn load_docs(config: Config) -> Result(Docs, String) {
   use example <- result.try(parse_example(example_lines))
   use references <- result.try(
     list.try_map(
-      ["quickstart", "concepts", "clients", "api", "self-hosting"],
+      ["quickstart", "concepts", "clients", "api", "self-hosting", "privacy"],
       fn(name) {
         use md <- result.try(read(name <> ".md"))
         use html <- result.map(page(name <> ".html"))
@@ -326,10 +326,13 @@ fn route(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
       || name == "clients"
       || name == "api"
       || name == "self-hosting"
+      || name == "privacy"
     -> Ok(reference(web, c, name))
     // Where the docs lived before /docs; room pages fetched earlier still link here.
     ["protocol"], Get -> Ok(moved(c.base <> "/docs/api"))
     ["clients"], Get -> Ok(moved(c.base <> "/docs/clients"))
+    // Directories and forms ask for a privacy policy at the conventional address.
+    ["privacy"], Get -> Ok(moved(c.base <> "/docs/privacy"))
     ["cli"], Get -> cli(web, c)
     // The pages carry their icon inline; directories and favicon services fetch these paths.
     ["favicon.ico"], Get -> icon(web, c, "favicon.ico", "image/x-icon")
