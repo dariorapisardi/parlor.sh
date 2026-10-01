@@ -292,6 +292,21 @@ def cli_served(c):
 
 
 @check('contract')
+def icons_served(c):
+    """GET /favicon.ico and /favicon.svg serve the icon, with the security headers"""
+    ico = c.srv.get('/favicon.ico')
+    eq(ico.status, 200, 'ico status')
+    eq(ico.type, 'image/x-icon', 'ico content type')
+    ok(ico.body[:4] == b'\x00\x00\x01\x00', 'not an ICO file')
+    security_headers(ico, '/favicon.ico')
+    svg = c.srv.get('/favicon.svg')
+    eq(svg.status, 200, 'svg status')
+    eq(svg.type, 'image/svg+xml', 'svg content type')
+    ok(svg.text.lstrip().startswith('<svg'), 'not an SVG')
+    security_headers(svg, '/favicon.svg')
+
+
+@check('contract')
 def example_room(c):
     """/example is a sample room in both representations, and nothing to join"""
     md = c.srv.get('/example')

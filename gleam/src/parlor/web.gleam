@@ -331,6 +331,9 @@ fn route(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
     ["protocol"], Get -> Ok(moved(c.base <> "/docs/api"))
     ["clients"], Get -> Ok(moved(c.base <> "/docs/clients"))
     ["cli"], Get -> cli(web, c)
+    // The pages carry their icon inline; directories and favicon services fetch these paths.
+    ["favicon.ico"], Get -> icon(web, c, "favicon.ico", "image/x-icon")
+    ["favicon.svg"], Get -> icon(web, c, "favicon.svg", "image/svg+xml")
     [], Post -> create(web, c)
     ["r", id, ..rest], _ -> {
       let action = list.first(rest) |> option.from_result
@@ -563,6 +566,23 @@ fn cli(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
       )
       Error(fail.bare(500, "internal error"))
     }
+  }
+}
+
+fn icon(
+  web: Web,
+  c: Ctx,
+  name: String,
+  content_type: String,
+) -> Result(Response(ResponseData), HttpError) {
+  case simplifile.read_bits(web.config.root <> "/brand/" <> name) {
+    Ok(bits) ->
+      Ok(
+        send_bits(200, bits, content_type, [
+          #("cache-control", "public, max-age=86400"),
+        ]),
+      )
+    Error(_) -> Error(not_found(c))
   }
 }
 
@@ -1367,6 +1387,20 @@ fn send(
   kind: String,
   headers: List(#(String, String)),
 ) -> Response(ResponseData) {
+  send_bits(
+    status,
+    bit_array.from_string(body),
+    kind <> "; charset=utf-8",
+    headers,
+  )
+}
+
+fn send_bits(
+  status: Int,
+  body: BitArray,
+  content_type: String,
+  headers: List(#(String, String)),
+) -> Response(ResponseData) {
   // From the moment a shutdown starts, every answer tells the proxy not to keep the connection
   // to a process that is about to exit.
   let closing = case room.is_draining() {
@@ -1375,7 +1409,7 @@ fn send(
   }
   let all =
     [
-      #("content-type", kind <> "; charset=utf-8"),
+      #("content-type", content_type),
       #("cache-control", "no-store"),
     ]
     |> list.append(security)
@@ -1384,7 +1418,7 @@ fn send(
   list.fold(all, response.new(status), fn(resp, h) {
     response.set_header(resp, h.0, h.1)
   })
-  |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+  |> response.set_body(mist.Bytes(bytes_tree.from_bit_array(body)))
 }
 
 fn send_json(
