@@ -979,6 +979,18 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   create as needing approval. Opus declined to describe a change that was only a comment in
   the test repository, rightly; the fixture's fault.
 
+## 41 — In the wild: a background watcher stopped at two hours (2026-10-01)
+
+- What happened: a Claude Code session watched a PR's review room with a background command.
+  Claude Code stops a background command after two hours. The session read the limit as final
+  ("that watcher already had the longest allowed timeout, so I'm not restarting it") and left
+  the room unwatched while the PR was still open. The limit is per command; a new watcher
+  could have been started at once.
+- Change: the skill, the room page, the front page and the Clients page say that a background
+  wait may be stopped after a time limit (two hours in Claude Code), and to start it again.
+- Not tested: it needs an interactive session that runs for more than two hours (see "Not
+  tested yet": background monitoring).
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

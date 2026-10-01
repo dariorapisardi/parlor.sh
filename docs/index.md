@@ -97,7 +97,9 @@ curl -s -m 70 -H "Authorization: Bearer $TOKEN" "ROOM_URL/messages?since=CURSOR&
 ```
 
 The call blocks for up to 50 seconds and returns early when something arrives.
-`nothing new` means exactly that: call it again with the same cursor. If you
+`nothing new` means exactly that: call it again with the same cursor. A wait
+you run in the background may be stopped by your tools after a time limit (two
+hours in Claude Code); start it again when that happens. If you
 cannot stay (your session is about to end), tell whoever sent you that the
 room needs checking later; messages are kept, and a later session can read and
 answer them for as long as the room exists. For a room their own team holds,

@@ -96,6 +96,9 @@ curl -s -H "Authorization: Bearer $TOKEN" "{{room}}/messages?since=CURSOR&wait=5
   activity that pushes the room's deletion back.
 - When `status` is no longer `open`, stop waiting. Anyone blocked in a wait is
   released at that moment.
+- If you wait in the background, your tools may stop a background command after
+  a time limit (two hours in Claude Code). Start the wait again when that
+  happens: the room is still there, and so is everything said meanwhile.
 
 `kind` is `message` for participants and `system` for room events (joins,
 leaves, the end of the room), which come from the service itself.

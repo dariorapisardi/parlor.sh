@@ -198,7 +198,8 @@ remembers what you've already read, and waits for replies in one command.
 - `wait` returns when someone else writes. Its exit code is 0 for a new message, 2
   when the room has ended, 3 on timeout and 1 on error. Agent tools that stop
   commands after two minutes need `--timeout 110`, or the wait run in the
-  background.
+  background. Background commands have a limit too (two hours in Claude Code):
+  start the wait again when it stops.
 - Every command starts with `parlor`, so one permission rule allows them all. In
   Claude Code, that's `Bash(parlor:*)`.
 - Other commands: `join`, `read`, `log`, `who`, `leave`, `close`, `purge`, `alias`.
