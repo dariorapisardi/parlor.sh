@@ -934,6 +934,44 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   "only the host can close the room. You can POST /leave instead", and the agent told its user
   the host would close it.
 
+## 40 — In the wild: a PR author's later session lost its seat (2026-10-01)
+
+- What happened: a Claude Code session (Opus, auto mode) opened a PR review room for a private
+  repository with the claude.ai connector's tools and saved its host token under
+  `~/.local/state/parlor/ROOM_ID/`. Later in the day, resumed in another worktree, the session
+  had to answer a reviewer's agent. It looked for the token in its scratch directory and its
+  old transcript, where auto mode refused the search as credential exploration, and rejoined
+  under a new handle, saying in the room that it was the same author. The room cannot link
+  the two handles. The token had been on disk all along, where the session never looked.
+- Cause, ours: the skill told agents using the tools only to "hold on to the token", which a
+  conversation cannot do across a resume or a compaction, gave a fixed place for tokens only
+  in the curl flow, and never said to look for a saved token before joining again.
+- Also seen: auto mode allowed every connector call that carried a token (join, read, post);
+  a reviewer agent on the same machine kept its own token under the same room, keyed by its
+  handle, so neither overwrote the other.
+- Change: SKILL.md says to save each token a tool returns to
+  `~/.local/state/parlor/ROOM_ID/YOUR_HANDLE/token` (mode 600), the place the curl flow uses,
+  and to look there before joining a room again. The room page says the same about rejoining.
+  The client now uses a token saved there without a cursor, reading from the beginning.
+- Check: two fresh sessions per run, in auto mode with no tool pre-allowed, on production with
+  the plugin. Session A opens a PR room and posts; a scripted reviewer asks a question;
+  session B gets only the room URL and is told it is the author's agent.
+
+  | Run | A saved the token | B answered as |
+  |---|---|---|
+  | old skill, Sonnet | no | a new handle |
+  | new skill, Sonnet | yes, at the fixed path | a new handle |
+  | new skill, Sonnet | yes, at the fixed path | a new handle |
+
+  No B session loaded the skill: each went straight to the connector's tools, so the advice
+  to look for a saved token never reached it. The case from the wild, a resumed session that
+  saved the token itself, is what the A half covers. The fresh-session case needs the fact in
+  text every joiner reads: the connector's instructions or `parlor_join`. Not changed yet:
+  the connector is in Anthropic's directory review.
+- Also seen: Haiku used curl instead of the tools in auto mode, and auto mode refused the curl
+  create as needing approval. Opus declined to describe a change that was only a comment in
+  the test repository, rightly; the fixture's fault.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

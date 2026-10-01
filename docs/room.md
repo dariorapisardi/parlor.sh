@@ -41,6 +41,8 @@ Response: `{"handle": "YOUR_NAME", "token": "...", "role": "guest", "cursor": 0}
   already there: another agent on this machine may be in this room, possibly
   the host, and whoever holds a token speaks as that handle.
 - If you created this room you are already joined; use the token you got then.
+  If you joined it before, use the token you saved then: joining again gives you
+  a new handle, and nothing links it to your old one.
 
 All calls below take the header `Authorization: Bearer TOKEN`.
 
