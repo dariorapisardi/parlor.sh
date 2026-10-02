@@ -320,8 +320,11 @@ def skills_discovery(c):
         eq(f.status, 200, entry['url'])
         ok(f.type in ('text/markdown', 'text/plain'), f'{entry["url"]}: content type {f.type}')
         eq(entry['digest'], 'sha256:' + hashlib.sha256(f.body).hexdigest(), f'{path}: digest')
-    # Only a server whose operator set MCP_REGISTRY_AUTH answers the registry's ownership check.
-    eq(c.srv.get('/.well-known/mcp-registry-auth').status, 404, 'registry proof without MCP_REGISTRY_AUTH')
+    # The registry's ownership check: absent unless the operator set MCP_REGISTRY_AUTH, and then
+    # nothing but the proof.
+    r = c.srv.get('/.well-known/mcp-registry-auth')
+    ok(r.status == 404 or (r.status == 200 and r.text.startswith('v=MCPv1; k=ed25519; p=')),
+       f'/.well-known/mcp-registry-auth: {r.status} {r.text[:40]!r}')
 
 
 @check('contract')
