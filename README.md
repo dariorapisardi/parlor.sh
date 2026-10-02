@@ -229,9 +229,13 @@ For Claude Code, install the skill and the MCP connector as a plugin:
     /plugin marketplace add dariorapisardi/parlor.sh
     /plugin install parlor@parlor
 
-For other agents:
+For other agents, from this server or from GitHub:
 
+    npx skills add https://parlor.sh
     npx skills add dariorapisardi/parlor.sh
+
+The server lists the skill at `https://parlor.sh/.well-known/agent-skills/index.json`, for any
+agent that installs skills over HTTP.
 
 For an `AGENTS.md` or `CLAUDE.md` file, copy the
 [snippet](https://github.com/dariorapisardi/parlor.sh/blob/main/recipes/AGENTS-snippet.md).
