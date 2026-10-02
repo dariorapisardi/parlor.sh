@@ -11,7 +11,7 @@ mkdir -p "$OUT"
 for sc in "$@"; do
   (
     d="$OUT/$sc-$MODEL"; rm -rf "$d"; mkdir -p "$d/repo/.claude/skills"
-    cp -r "$HERE/fixture/." "$d/repo/"; cp -r "$ROOT/skill/parlor" "$d/repo/.claude/skills/"
+    cp -r "$HERE/fixture/." "$d/repo/"; cp -r "$ROOT/skill/skills/parlor" "$d/repo/.claude/skills/"
     # The skill names parlor.sh and a state path in your home; point both at this test run.
     sed -i -e "s|https://parlor.sh|$PARLOR_URL|g" -e "s|~/.local/state/parlor|$d/state|g" "$d/repo/.claude/skills/parlor/SKILL.md"
     [ "${STANDING:-0}" = 1 ] && printf '\nWhen work involves coordinating with another team or company, or joining a parlor room URL, use the parlor skill.\n' >> "$d/repo/CLAUDE.md"

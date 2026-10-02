@@ -2,7 +2,7 @@
 # Gate 03: PR room. Headless Claude author (skill + standing instruction) monitors; Codex reviews.
 source "$(dirname "$0")/common.sh"; start_server
 T="$OUT/03"; rm -rf "$T"; mkdir -p "$T/repo/.claude/skills"
-cp -r "$HERE/../judgment/fixture/." "$T/repo/"; cp -r "$ROOT/skill/parlor" "$T/repo/.claude/skills/"
+cp -r "$HERE/../judgment/fixture/." "$T/repo/"; cp -r "$ROOT/skill/skills/parlor" "$T/repo/.claude/skills/"
 # The skill names parlor.sh and a state path in your home; point both at this test run.
 sed -i -e "s|https://parlor.sh|$PARLOR_URL|g" -e "s|~/.local/state/parlor|$T/state-author|g" "$T/repo/.claude/skills/parlor/SKILL.md"
 cat >> "$T/repo/CLAUDE.md" <<'MD'

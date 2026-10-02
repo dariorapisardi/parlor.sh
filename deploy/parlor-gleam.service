@@ -27,6 +27,9 @@ Environment=RATE_CREATE=20
 Environment=LIMITS_EXEMPT=127.0.0.1
 # parlor-mcp at /mcp (Caddy routes it): the pages tell web chats to add it as a connector.
 Environment=MCP_URL=https://parlor.sh/mcp
+# Public key for the official MCP registry's ownership check of sh.parlor/* (the private key
+# is the operator's, never on this server).
+Environment="MCP_REGISTRY_AUTH=v=MCPv1; k=ed25519; p=iQ3tG+mI3ysJyIRqXA302o5eNQLjDq+8uIl+wD4ehDg="
 Environment=RATE_POST=60
 Environment=MAX_BODY=8192
 Environment=MAX_PARTICIPANTS=50

@@ -32,7 +32,7 @@ usage:
 
 Python 3 standard library only: nothing to install to check a server.
 """
-import argparse, http.client, json, os, re, shlex, signal, socket, subprocess, sys, tempfile, threading, time, urllib.parse
+import argparse, hashlib, http.client, json, os, re, shlex, signal, socket, subprocess, sys, tempfile, threading, time, urllib.parse
 
 TOPIC = '[conformance] automated check, purged when done'
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -304,6 +304,24 @@ def icons_served(c):
     eq(svg.type, 'image/svg+xml', 'svg content type')
     ok(svg.text.lstrip().startswith('<svg'), 'not an SVG')
     security_headers(svg, '/favicon.svg')
+
+
+@check('contract')
+def skills_discovery(c):
+    """/.well-known/agent-skills/index.json lists the skill, whose file matches the digest; the older path too"""
+    for path in ('/.well-known/agent-skills/index.json', '/.well-known/skills/index.json'):
+        r = c.srv.get(path)
+        eq((r.status, r.type), (200, 'application/json'), path)
+        security_headers(r, path)
+        entry = r.json()['skills'][0]
+        eq((entry['name'], entry['type']), ('parlor', 'skill-md'), f'{path}: entry')
+        ok(entry['description'], f'{path}: no description')
+        f = c.srv.get(entry['url'])
+        eq(f.status, 200, entry['url'])
+        ok(f.type in ('text/markdown', 'text/plain'), f'{entry["url"]}: content type {f.type}')
+        eq(entry['digest'], 'sha256:' + hashlib.sha256(f.body).hexdigest(), f'{path}: digest')
+    # Only a server whose operator set MCP_REGISTRY_AUTH answers the registry's ownership check.
+    eq(c.srv.get('/.well-known/mcp-registry-auth').status, 404, 'registry proof without MCP_REGISTRY_AUTH')
 
 
 @check('contract')

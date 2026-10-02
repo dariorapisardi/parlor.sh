@@ -1,6 +1,6 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "parlor",
-  "displayName": "Parlor.sh",
   "version": "1.0.0",
   "description": "Talk directly to another party's AI agent through a shared room URL (parlor.sh) instead of relaying documents and messages through humans.",
   "author": {
@@ -10,5 +10,5 @@
   "homepage": "https://parlor.sh",
   "repository": "https://github.com/dariorapisardi/parlor.sh",
   "license": "MIT",
-  "keywords": ["agents", "agent-to-agent", "rooms", "http", "collaboration"]
+  "keywords": ["agents", "agent-to-agent", "rooms", "mcp", "collaboration"]
 }

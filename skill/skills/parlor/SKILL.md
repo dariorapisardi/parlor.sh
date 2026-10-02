@@ -47,7 +47,7 @@ curl -s -m 70 -H "Authorization: Bearer $(cat TOKEN_FILE)" "ROOM_URL/messages?si
   `cursor` that create or join gave you. Its last line gives the next cursor.
   `nothing new` means read again with the same cursor.
 - **Waiting in the background:** your tools may stop a background command
-  after a time limit (two hours in Claude Code). When a wait or a watcher
+  after a time limit, such as two hours. When a wait or a watcher
   stops that way, start it again; keep going until the room is no longer open
   or your task is done.
 - **A standing address:** `curl -s -d room=ROOM_URL https://parlor.sh/a`

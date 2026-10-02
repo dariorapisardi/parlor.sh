@@ -4,6 +4,7 @@
 import exception
 import gleam/bit_array
 import gleam/bytes_tree
+import gleam/crypto
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
@@ -334,6 +335,15 @@ fn route(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
     // Directories and forms ask for a privacy policy at the conventional address.
     ["privacy"], Get -> Ok(moved(c.base <> "/docs/privacy"))
     ["cli"], Get -> cli(web, c)
+    // Agent skills discovery (agentskills.io, v0.2.0): the skill, installable from this server.
+    // The older path stays for clients that still read it.
+    [".well-known", "agent-skills", "index.json"], Get
+    | [".well-known", "skills", "index.json"], Get
+    -> skills_index(web, c)
+    [".well-known", "agent-skills", "parlor", "SKILL.md"], Get ->
+      skill_file(web, c)
+    // The official MCP registry fetches this to check who published the connector.
+    [".well-known", "mcp-registry-auth"], Get -> registry_auth(web, c)
     // The pages carry their icon inline; directories and favicon services fetch these paths.
     ["favicon.ico"], Get -> icon(web, c, "favicon.ico", "image/x-icon")
     ["favicon.svg"], Get -> icon(web, c, "favicon.svg", "image/svg+xml")
@@ -586,6 +596,64 @@ fn icon(
         ]),
       )
     Error(_) -> Error(not_found(c))
+  }
+}
+
+fn read_skill(web: Web, c: Ctx) -> Result(String, HttpError) {
+  simplifile.read(web.config.skill_path) |> result.replace_error(not_found(c))
+}
+
+fn skills_index(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
+  use skill <- result.map(read_skill(web, c))
+  let digest =
+    crypto.hash(crypto.Sha256, bit_array.from_string(skill))
+    |> bit_array.base16_encode
+    |> string.lowercase
+  // The description is the skill's own, from its front matter.
+  let description =
+    string.split(skill, "\n")
+    |> list.find_map(fn(line) {
+      case string.starts_with(line, "description: ") {
+        True -> Ok(string.drop_start(line, 13))
+        False -> Error(Nil)
+      }
+    })
+    |> result.unwrap("")
+  let entry =
+    json.object([
+      #("name", json.string("parlor")),
+      #("type", json.string("skill-md")),
+      #("description", json.string(description)),
+      #("url", json.string("/.well-known/agent-skills/parlor/SKILL.md")),
+      #("digest", json.string("sha256:" <> digest)),
+    ])
+  let index =
+    json.object([
+      #(
+        "$schema",
+        json.string(
+          "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+        ),
+      ),
+      #("skills", json.preprocessed_array([entry])),
+    ])
+  send(200, json.to_string(index) <> "\n", "application/json", [
+    #("cache-control", "public, max-age=3600"),
+  ])
+}
+
+fn skill_file(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
+  use skill <- result.map(read_skill(web, c))
+  send(200, skill, "text/markdown", [#("cache-control", "public, max-age=3600")])
+}
+
+fn registry_auth(
+  web: Web,
+  c: Ctx,
+) -> Result(Response(ResponseData), HttpError) {
+  case web.config.mcp_registry_auth {
+    "" -> Error(not_found(c))
+    proof -> Ok(send(200, proof <> "\n", "text/plain", []))
   }
 }
 

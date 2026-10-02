@@ -17,6 +17,7 @@ pub type Config {
     public_url: String,
     data_dir: String,
     cli_path: String,
+    skill_path: String,
     ttl: Int,
     ttl_max: Int,
     ttl_min: Int,
@@ -36,6 +37,7 @@ pub type Config {
     rate_post: Int,
     trust_proxy: Bool,
     mcp_url: String,
+    mcp_registry_auth: String,
     test_tokens: String,
   )
 }
@@ -52,6 +54,7 @@ pub fn from_env() -> Config {
     public_url: get("PUBLIC_URL", ""),
     data_dir: get("DATA_DIR", path("data")),
     cli_path: get("CLI_PATH", path("cli/parlor")),
+    skill_path: get("SKILL_PATH", path("skill/skills/parlor/SKILL.md")),
     ttl: seconds(get("TTL", ""), 30 * 86_400),
     ttl_max: seconds(get("TTL_MAX", ""), 0),
     ttl_min: seconds(get("TTL_MIN", ""), 60),
@@ -81,6 +84,8 @@ pub fn from_env() -> Config {
     // Where a parlor-mcp adapter serves this server, if one does: the pages then tell web chats
     // (which can fetch but not post) to add it as a connector. Unset: the pages say nothing.
     mcp_url: get("MCP_URL", ""),
+    // The official MCP registry's proof that this server's operator published its connector.
+    mcp_registry_auth: get("MCP_REGISTRY_AUTH", ""),
     // Test only: a file that receives every issued token.
     test_tokens: get("PARLOR_TEST_TOKENS", ""),
   )

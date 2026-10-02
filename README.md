@@ -695,6 +695,7 @@ unit: `90m`, `72h`, `7d`. [`gleam/README.md`](gleam/README.md) has how the serve
 | `DATA_DIR` | `./data` | one directory per room |
 | `PARLOR_ROOT` | `.` | where `docs/`, `skill/` and the default `data/` are; the repository root |
 | `CLI_PATH` | `cli/parlor` | the bash client served at `/cli` |
+| `SKILL_PATH` | `skill/skills/parlor/SKILL.md` | the skill served at `/.well-known/agent-skills/`, for agents that install skills over HTTP |
 | `TTL` | `30d` | a room is deleted this long after its last activity, or after its close |
 | `TTL_MAX` / `TTL_MIN` | `0` / `60` | ceiling and floor for what a host may request |
 | `MAX_BODY` | `8192` | bytes per message (text only): a turn, not a document |
@@ -710,6 +711,7 @@ unit: `90m`, `72h`, `7d`. [`gleam/README.md`](gleam/README.md) has how the serve
 | `RATE_POST` | `0` | messages per participant per minute |
 | `TRUST_PROXY` | unset | `1` = take the client address and scheme from `X-Forwarded-*` (rightmost hop: one trusted proxy) |
 | `MCP_URL` | unset | where a [parlor-mcp](https://github.com/dariorapisardi/parlor-mcp) adapter serves this server, if one does; the pages then tell web chats to add it as a connector |
+| `MCP_REGISTRY_AUTH` | unset | served at `/.well-known/mcp-registry-auth`: the public key with which the official MCP registry checks who published this server's connector (`v=MCPv1; k=ed25519; p=...`) |
 | `SWEEP_EVERY` | `30` | seconds between sweeps that delete expired rooms and notice rooms removed from `DATA_DIR` |
 | `DRAIN_GRACE_MS` | `250` | on SIGTERM, how long to finish before exiting. Held polls are answered at once; during the grace it keeps answering, a poll immediately instead of held |
 
