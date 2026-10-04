@@ -15,6 +15,15 @@ parlor.sh {
 			roll_keep_for 336h
 		}
 	}
+	# Ownership proof for Glama's listing of the parlor.sh connector. Public by design: Glama asks
+	# for it to stay published. Not part of parlor; drop it on another deployment.
+	handle /.well-known/glama.json {
+		header Content-Type "application/json"
+		header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+		header X-Content-Type-Options "nosniff"
+		header Referrer-Policy "no-referrer"
+		respond `{"$schema":"https://glama.ai/mcp/schemas/connector.json","claim":"glama_claim_8OTyFv_A6gjxEmLmbVpVPF_P7Ppx1MZC"}` 200
+	}
 	# parlor-mcp (github.com/dariorapisardi/parlor-mcp), a separate process: the MCP adapter for
 	# web chats. Not part of parlor; drop this block if you do not run it.
 	handle /mcp {
