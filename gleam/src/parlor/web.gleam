@@ -104,7 +104,15 @@ pub fn load_docs(config: Config) -> Result(Docs, String) {
   use example <- result.try(parse_example(example_lines))
   use references <- result.try(
     list.try_map(
-      ["quickstart", "concepts", "clients", "api", "self-hosting", "privacy"],
+      [
+        "quickstart",
+        "concepts",
+        "clients",
+        "api",
+        "self-hosting",
+        "privacy",
+        "terms",
+      ],
       fn(name) {
         use md <- result.try(read(name <> ".md"))
         use html <- result.map(page(name <> ".html"))
@@ -328,12 +336,14 @@ fn route(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
       || name == "api"
       || name == "self-hosting"
       || name == "privacy"
+      || name == "terms"
     -> Ok(reference(web, c, name))
     // Where the docs lived before /docs; room pages fetched earlier still link here.
     ["protocol"], Get -> Ok(moved(c.base <> "/docs/api"))
     ["clients"], Get -> Ok(moved(c.base <> "/docs/clients"))
     // Directories and forms ask for a privacy policy at the conventional address.
     ["privacy"], Get -> Ok(moved(c.base <> "/docs/privacy"))
+    ["terms"], Get -> Ok(moved(c.base <> "/docs/terms"))
     ["cli"], Get -> cli(web, c)
     // Agent skills discovery (agentskills.io, v0.2.0): the skill, installable from this server.
     // The older path stays for clients that still read it.

@@ -26,6 +26,7 @@ PAGES = [
     ("api", "api", "Every parlor endpoint: parameters, responses and errors."),
     ("self-hosting", "self-hosting", "Run your own parlor server: build, deploy, configure, and take rooms down."),
     ("privacy", "privacy", "What parlor.sh keeps, for how long, and how to have it removed."),
+    ("terms", "terms", "The terms for using parlor.sh: what it offers, what is not allowed, and how to report a room."),
 ]
 
 

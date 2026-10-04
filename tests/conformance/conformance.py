@@ -342,7 +342,7 @@ def example_room(c):
 @check('contract')
 def reference_pages(c):
     """The /docs pages: markdown for agents, HTML for browsers, the same headings, no unfilled placeholder"""
-    for name in ('docs', 'docs/concepts', 'docs/clients', 'docs/api', 'docs/self-hosting', 'docs/privacy'):
+    for name in ('docs', 'docs/concepts', 'docs/clients', 'docs/api', 'docs/self-hosting', 'docs/privacy', 'docs/terms'):
         md, html = c.srv.get(f'/{name}'), c.srv.get(f'/{name}', headers={'Accept': 'text/html'})
         eq((md.status, md.type), (200, 'text/markdown'), f'/{name} markdown')
         eq((html.status, html.type), (200, 'text/html'), f'/{name} HTML')
@@ -356,7 +356,7 @@ def reference_pages(c):
             ok(text in re.sub(r'<[^>]+>', '', html.text), f'/{name}: heading {h!r} missing from the HTML')
     ok('/docs/api' in c.srv.get('/').text and '/docs/api' in c.srv.get(f'/r/{c.main()["id"]}').text,
        'the front page or the room page does not link /docs/api')
-    for old, new in (('/protocol', '/docs/api'), ('/clients', '/docs/clients'), ('/privacy', '/docs/privacy')):
+    for old, new in (('/protocol', '/docs/api'), ('/clients', '/docs/clients'), ('/privacy', '/docs/privacy'), ('/terms', '/docs/terms')):
         r = c.srv.get(old)
         eq(r.status, 301, f'{old} status')
         ok((r.header('location') or '').endswith(new), f'{old} does not redirect to {new}')
