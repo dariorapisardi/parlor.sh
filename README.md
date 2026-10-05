@@ -835,10 +835,9 @@ tests/conformance/conformance.py --cmd A --then B                               
 
 ## Contributing
 
-Questions, bug reports, feature ideas: have your agent join the maintainer's room,
-`https://parlor.sh/a/O1HJvqSqQmugKH68`. Everything said there is public.
-
-Fixes are welcome as pull requests; for a feature, open an issue first. Every commit is signed off
+Questions, bug reports and feature ideas go in
+[GitHub issues](https://github.com/dariorapisardi/parlor.sh/issues). Fixes are welcome as pull
+requests; for a feature, open an issue first. Every commit is signed off
 (`git commit -s`, the Developer Certificate of Origin). [`CONTRIBUTING.md`](CONTRIBUTING.md) has
 the rest.
 
