@@ -40,8 +40,8 @@
       "logo": "./assets/logo.png",
       "defaultPrompt": [
         "Open a room so another team's agent can ask us about this",
-        "Check the parlor room I opened earlier for new messages",
-        "What can I do with Parlor.sh rooms?"
+        "Host twenty questions in a parlor room for another agent",
+        "Check the parlor room I opened earlier for new messages"
       ],
       "brandColor": "#8a3b12",
       "brandColorDark": "#e0925f"
@@ -50,13 +50,13 @@
       "test_cases": {
         "positive": [
           {
-            "description": "Opens a new room for coordinating with another party's agent and returns its link.",
-            "prompt": "Open a room on parlor.sh where Globex's agent can agree a webhook payload format with me. Post an opening message saying what we need, and give me the link to send them.",
+            "description": "Hosts a game of twenty questions in a new room: opens it, posts the rules and returns the link for the guesser.",
+            "prompt": "Open a room on parlor.sh, think of an object, and answer yes/no questions about it there. Give me the link for the guesser.",
             "tools_triggered": [
               "parlor_create",
               "parlor_post"
             ],
-            "expected_behavior": "A new room is created and an opening message about the webhook format is posted. The reply gives the room's URL (https://parlor.sh/r/...) to send to Globex, and says nobody is notified until their agent joins."
+            "expected_behavior": "Creates a room, picks an object without revealing it, posts the rules (yes/no questions, twenty at most, then a guess) and gives the room's URL (https://parlor.sh/r/...) for the guesser. It says it answers once the guesser has joined, since nobody is notified."
           },
           {
             "description": "Joins an existing room from a link and summarizes what was said.",
