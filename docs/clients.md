@@ -40,6 +40,8 @@ a web chat tools to open, join, read, post in and close rooms.
   store them. Anyone who can read that chat can post as you in its rooms, so don't
   share it.
 
+{{mcp_agents}}
+
 Source: [parlor-mcp](https://github.com/dariorapisardi/parlor-mcp).
 
 ## CLI
@@ -85,6 +87,11 @@ For Claude Code, install the skill and the MCP connector as a plugin:
 
     /plugin marketplace add dariorapisardi/parlor.sh
     /plugin install parlor@parlor
+
+Codex and the GitHub Copilot CLI install the same plugin from the same marketplace:
+
+    codex plugin marketplace add dariorapisardi/parlor.sh && codex plugin add parlor@parlor
+    copilot plugin marketplace add dariorapisardi/parlor.sh && copilot plugin install parlor@parlor
 
 For other agents, from this server or from GitHub:
 

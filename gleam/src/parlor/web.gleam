@@ -422,6 +422,71 @@ fn reference(web: Web, c: Ctx, name: String) -> Response(ResponseData) {
         <> "</code> to your chat as a custom connector. No sign-in needed."
     }
   }
+  // The connector in coding agents: one row per agent, each command tested against a live
+  // connector. Only shown where this server runs one.
+  let agents = fn(html) {
+    case config.mcp_url {
+      "" -> ""
+      url -> {
+        let json_url = "\"" <> url <> "\""
+        let rows = [
+          #("Claude Code", "claude mcp add --transport http parlor " <> url),
+          #("Codex", "codex mcp add parlor --url " <> url),
+          #(
+            "GitHub Copilot CLI",
+            "copilot mcp add --transport http parlor " <> url,
+          ),
+          #("Kiro CLI", "kiro-cli mcp add --name parlor --url " <> url),
+          #(
+            "Cursor",
+            "{\"mcpServers\": {\"parlor\": {\"url\": " <> json_url <> "}}}",
+          ),
+          #(
+            "OpenCode",
+            "{\"mcp\": {\"parlor\": {\"type\": \"remote\", \"url\": "
+              <> json_url
+              <> "}}}",
+          ),
+        ]
+        // Where the two settings snippets go, as markdown and as HTML.
+        let note = fn(agent, html) {
+          case agent, html {
+            "Cursor", False -> " in `.cursor/mcp.json`, then approve it"
+            "Cursor", True ->
+              " in <code>.cursor/mcp.json</code>, then approve it"
+            "OpenCode", False -> " in `opencode.json`"
+            "OpenCode", True -> " in <code>opencode.json</code>"
+            _, _ -> ""
+          }
+        }
+        case html {
+          False ->
+            "Coding agents can add it too, instead of making the HTTP calls themselves:\n\n| Agent | Add the connector |\n|---|---|\n"
+            <> string.join(
+              list.map(rows, fn(r) {
+                "| " <> r.0 <> " | `" <> r.1 <> "`" <> note(r.0, False) <> " |"
+              }),
+              "\n",
+            )
+          True ->
+            "<p>Coding agents can add it too, instead of making the HTTP calls themselves:</p>\n<div class=\"table\"><table><thead><tr><th>Agent</th><th>Add the connector</th></tr></thead><tbody>"
+            <> string.join(
+              list.map(rows, fn(r) {
+                "<tr><td>"
+                <> escape_html(r.0)
+                <> "</td><td><code>"
+                <> escape_html(r.1)
+                <> "</code>"
+                <> note(r.0, True)
+                <> "</td></tr>"
+              }),
+              "",
+            )
+            <> "</tbody></table></div>"
+        }
+      }
+    }
+  }
   let vars = [
     #("base", c.base),
     #("ttl", config.human_duration(config.ttl)),
@@ -439,7 +504,11 @@ fn reference(web: Web, c: Ctx, name: String) -> Response(ResponseData) {
     False ->
       send(
         200,
-        render(md, [#("mcp_connect", connect(False)), ..vars]),
+        render(md, [
+          #("mcp_connect", connect(False)),
+          #("mcp_agents", agents(False)),
+          ..vars
+        ]),
         "text/markdown",
         [vary],
       )
@@ -447,7 +516,11 @@ fn reference(web: Web, c: Ctx, name: String) -> Response(ResponseData) {
       let escaped = list.map(vars, fn(kv) { #(kv.0, escape_html(kv.1)) })
       send(
         200,
-        render(html, [#("mcp_connect", connect(True)), ..escaped]),
+        render(html, [
+          #("mcp_connect", connect(True)),
+          #("mcp_agents", agents(True)),
+          ..escaped
+        ]),
         "text/html",
         [vary],
       )

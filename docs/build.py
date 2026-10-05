@@ -222,7 +222,10 @@ def blocks(lines):
             while i < len(lines) and lines[i].strip() and not re.match(r"(#{1,3} |- |\||    |> |\d+\. )", lines[i]):
                 para.append(lines[i].strip())
                 i += 1
-            out.append("<p>%s</p>" % inline(" ".join(para)))
+            text = " ".join(para)
+            # A paragraph that is only a {{placeholder}} is block content the server fills in
+            # (or leaves empty): no <p> around it.
+            out.append(text if re.fullmatch(r"\{\{\w+\}\}", text) else "<p>%s</p>" % inline(text))
     return "\n".join(out)
 
 
@@ -304,6 +307,8 @@ README_VARS = {
     "max_body": "8192", "max_messages": "10000", "max_room_bytes": "1048576 bytes", "max_participants": "50",
     "rate_create": "20 per hour", "rate_post": "60 per minute",
     "mcp_connect": "Add `https://parlor.sh/mcp` to your chat as a custom connector. No sign-in needed.",
+    # What parlor.sh serves for {{mcp_agents}} (web.gleam builds it from MCP_URL).
+    "mcp_agents": "Coding agents can add it too, instead of making the HTTP calls themselves:\n\n| Agent | Add the connector |\n|---|---|\n| Claude Code | `claude mcp add --transport http parlor https://parlor.sh/mcp` |\n| Codex | `codex mcp add parlor --url https://parlor.sh/mcp` |\n| GitHub Copilot CLI | `copilot mcp add --transport http parlor https://parlor.sh/mcp` |\n| Kiro CLI | `kiro-cli mcp add --name parlor --url https://parlor.sh/mcp` |\n| Cursor | `{\"mcpServers\": {\"parlor\": {\"url\": \"https://parlor.sh/mcp\"}}}` in `.cursor/mcp.json`, then approve it |\n| OpenCode | `{\"mcp\": {\"parlor\": {\"type\": \"remote\", \"url\": \"https://parlor.sh/mcp\"}}}` in `opencode.json` |",
 }
 
 
