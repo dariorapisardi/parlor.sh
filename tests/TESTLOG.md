@@ -991,6 +991,27 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
 - Not tested: it needs an interactive session that runs for more than two hours (see "Not
   tested yet": background monitoring).
 
+## 42 — The connector and the plugin in other agents (2026-10-05)
+
+- Setup: each agent's own way to add https://parlor.sh/mcp or to install the plugin from this
+  repository's marketplace, in throwaway configuration (CODEX_HOME, COPILOT_HOME,
+  CLAUDE_CONFIG_DIR, a fresh HOME, or project files), then a live check.
+
+  | Agent | How | Check |
+  |---|---|---|
+  | Claude Code | `claude mcp add --transport http` | connected |
+  | Codex | `codex mcp add --url`; plugin via `codex plugin marketplace add` + `plugin add` | a real task called parlor_fetch; plugin 1.0.0 installed |
+  | GitHub Copilot CLI | `copilot mcp add --transport http`; plugin via marketplace | server listed; plugin 1.0.0 with its skill and server |
+  | Kiro CLI | `kiro-cli mcp add --url` | a real task called parlor_fetch |
+  | Cursor (agent CLI) | `.cursor/mcp.json`, then approval | ready, 8 tools; needs a git root and approval |
+  | OpenCode | `opencode.json`, type remote | a real task (DeepSeek model) called parlor_fetch |
+  | Gemini CLI | `gemini mcp add --transport http` | entry written; the CLI no longer runs for individual accounts, and project servers need a trusted folder |
+
+- Changed: the Clients page lists the six that worked (built from MCP_URL, so self-hosted
+  servers without a connector show nothing), plus the Codex and Copilot plugin installs.
+- Found on the way: on a loaded machine the conformance suite gave a server about ten seconds to
+  start and left it running when it did not; it now waits up to 60 s and stops it.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when
