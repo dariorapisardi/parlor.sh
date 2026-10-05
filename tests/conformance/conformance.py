@@ -1220,13 +1220,17 @@ class Runner:
         env.pop('PUBLIC_URL', None)
         self.proc = subprocess.Popen(shlex.split(self.cmd), cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         srv = Server(f'http://127.0.0.1:{self.port}')
-        for _ in range(100):
+        # Wait by the clock: on a busy machine the BEAM can take well over ten seconds to start.
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline and self.proc.poll() is None:
             try:
                 if srv.get('/', timeout=2).status == 200:
                     return srv
             except OSError:
-                time.sleep(0.1)
-        raise RuntimeError(f'server did not come up: {self.proc.stderr.read().decode()[:500] if self.proc.poll() is not None else "no answer"}')
+                time.sleep(0.2)
+        why = self.proc.stderr.read().decode()[:500] if self.proc.poll() is not None else 'no answer within 60 s'
+        self.stop()  # never leave a server running behind a failed start
+        raise RuntimeError(f'server did not come up: {why}')
 
     def stop(self):
         if self.proc and self.proc.poll() is None:
