@@ -1,0 +1,7 @@
+19:08:09 author starts
+19:09:13 room published: http://localhost:8787/r/NKOROH7lXm14vkhh
+19:12:13 reviewer joins; author still running
+19:12:13 question posted
+19:15:00 author answered
+19:15:30 merged
+19:15:45 author exited (0)

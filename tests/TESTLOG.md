@@ -1012,6 +1012,47 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
 - Found on the way: on a loaded machine the conformance suite gave a server about ten seconds to
   start and left it running when it did not; it now waits up to 60 s and stops it.
 
+## 43 — Staying in a room for hours: Kiro CLI (2026-10-08)
+
+- In the wild (2026-10-07): a Kiro CLI session opened a PR and its review room as the repo's
+  AGENTS.md asked ("watch the room until the PR is merged or closed"), then ended its turn: it
+  "can't run an open-ended background long-poll" between turns. Pushed, it said Claude Code's
+  skill "spawns a detached background watcher" (it does not) and offered a `nohup` script that
+  could not wake it. What it missed: a turn lasts as long as a command blocks, so a session left
+  open can wait in the foreground for hours, and a loop of reads that returns only when something
+  arrives costs no steps while it blocks.
+- New gate 09 (`tests/gate/09-stay-in-room.sh`): Kiro CLI makes a change and opens a PR room as a
+  fixture AGENTS.md asks; a scripted reviewer asks one question `REVIEW_DELAY` seconds later and
+  merges once it is answered. Kiro runs interactively in tmux, so a turn that ends hands back to a
+  user who has walked away. Headless (`--no-interactive`) hides the failure: with nobody to hand
+  back to, it kept polling (run 1).
+- Runs, Kiro's `auto` model, one each (`runs/43-stay-in-room/`):
+
+  | # | What it read | Silence | Result |
+  |---|---|---|---|
+  | 1 | old pages, headless | 3 min | pass: six 50 s polls, answered, stopped after the merge |
+  | 2 | old pages | 10 min | fail: polled 6 min, then "I can't hold an indefinite background poll within a single session" |
+  | 3 | room page with the loop | 10 min | pass: read the page, ran the loop in the foreground, answered in 14 s, stopped 16 s after the merge |
+  | 4 | same, old create hint | 25 min | fail: never fetched the page; polled 17 min, then "a continuous hour-long watch isn't practical in a single turn" |
+  | 5 | + the create hint | 25 min | fail: ran the loop with its own 10-minute limit, then asked whether to keep the session open |
+  | 6 | + "a wait costs nothing" | 25 min | fail: polled once, then asked whether to keep a long-poll running |
+  | 7 | + one line in the fixture AGENTS.md | 25 min | pass: waited 25 min, restarting after Kiro's shell tool stopped a long loop; answered in 22 s; stopped 16 s after the merge; 1.79 credits for the session |
+
+- Reading: the pages fixed the belief. "I can't" (runs 2, 4) became "shall I keep going?" (5, 6).
+  Whether to keep going without asking is the user's call, so it went into the user's
+  instructions, not the page. One run per wording on a router that may pick a different model
+  each time: the direction is clear, the rates are not measured.
+- Changed: the room page's "Read and wait" has a paragraph on staying for hours (one wait at a
+  time; the turn need not end; a blocked wait costs nothing), a loop that returns only when
+  something arrives or the room stops being open, and "start it again with the same cursor" after
+  a time limit; it replaces the background-limit bullet. The front page says it in short and points
+  to the loop; the create response's `next` says it in one sentence. The AGENTS snippet's PR
+  paragraph adds "I leave the session open for this: keep waiting without ending your turn to ask
+  whether to go on."
+- Found on the way: Kiro CLI's shell tool stops a long command (run 7), and Kiro started the loop
+  again by itself. In run 7 the scripted reviewer took Kiro's greeting for the answer (the answer
+  came 15 s later, before the merge); it now waits for a reply to its question.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

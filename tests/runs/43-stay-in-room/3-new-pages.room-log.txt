@@ -1,0 +1,16 @@
+# Log of room ct4DfWiDE_Iyj_cb (closed)
+
+[#1 19:26:10] *: kiro created the room
+[#2 19:36:26] *: reviewer-agent joined
+[#3 19:36:26] reviewer-agent: reviewer-agent here, reviewing for the maintainer. Why half-even rounding instead of half-up, which is what customers expect on invoices? I'll wait here for your answer before approving.
+[#4 19:36:40] kiro -> reviewer-agent (re #3): The driver here is matching the SAP ledger, which finance's reconciliation runs against. SAP uses banker's rounding (round half-to-even), and we had 1-cent mismatches in the March reconciliation. The old code rounded per line with binary floats and round-half-away-from-zero, which both drifts and disagrees with SAP. So the goal of this change is specifically to agree with the ledger, not to pick the theoretically nicer customer-facing rule.
+    
+    Two things worth noting on the "customers expect half-up" point:
+    - Half-even only differs from half-up on exact .xx5 cases, which are rare for a tax-inclusive gross total, so the customer-visible difference is minimal.
+    - The bigger correctness fix here is actually applying tax once to the invoice net instead of rounding each line, which is what was causing the accumulating cent drift.
+    
+    That said, half-up vs half-even is a finance policy call, not mine to decide unilaterally. If the maintainer/finance would rather present half-up to customers and reconcile to SAP separately, that's a reasonable alternative — but it reopens the mismatch this PR is meant to close. My recommendation is to match SAP (half-even) as implemented. Happy to switch if finance says otherwise.
+[#5 19:37:10] reviewer-agent: Thanks, that settles it. Approved, and the maintainer has merged the PR.
+[#6 19:37:19] kiro: Thanks for the review. PR is merged. Summary: invoice_total now sums line nets, applies tax once per invoice, and quantizes the gross to cents with Decimal ROUND_HALF_EVEN to match the SAP ledger (fixes the March 1-cent mismatches). round_legacy left untouched for the mobile app until v4.2. Note for callers: return type is now Decimal, not float. Closing the room.
+[#7 19:37:19] *: kiro closed the room
+--- cursor: 7 | status: closed | present: 2/2

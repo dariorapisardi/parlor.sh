@@ -30,6 +30,10 @@ codex_run() { # codex_run DIR LOGNAME PROMPT  (sandboxed, network allowed, stdin
   (cd "$1" && timeout 900 codex exec --skip-git-repo-check --ephemeral -s workspace-write \
      -c sandbox_workspace_write.network_access=true -o "$OUT/$2.final.md" "$3" < /dev/null > "$OUT/$2.log" 2>&1)
 }
+kiro_run() { # kiro_run DIR LOGNAME PROMPT [SECONDS]  (headless; only the test's agent config, no MCP servers)
+  # The agent lives in DIR/.kiro/agents/naive.json; the gate writes it.
+  (cd "$1" && timeout "${4:-900}" kiro-cli chat --no-interactive --agent naive "$3" < /dev/null > "$OUT/$2.log" 2>&1)
+}
 leak_scan() { # leak_scan DIR...: issued tokens must not appear in files agents meant to share
   local n=0 list="$OUT/issued-tokens.txt"
   if [ ! -f "$list" ]; then # remote server: fall back to the tokens our own clients stored

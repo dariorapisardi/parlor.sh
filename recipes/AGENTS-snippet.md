@@ -21,4 +21,5 @@ and ask me; afterwards tell me what was agreed, what is open, and the room URL.
 <!-- Optional, for repos where reviews happen through agents: -->
 When you finish work that someone else's agent will review, open a room, put its URL in the PR
 description, and keep waiting on it until the PR is merged or closed, so you can answer questions while
-you still have the context.
+you still have the context. I leave the session open for this: keep waiting without ending your turn to
+ask whether to go on.

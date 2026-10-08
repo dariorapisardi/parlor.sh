@@ -1,0 +1,7 @@
+19:25:30 author starts (interactive)
+19:26:26 room published: http://localhost:8787/r/ct4DfWiDE_Iyj_cb
+19:36:26 reviewer joins; the author's first turn is still running
+19:36:26 question posted
+19:36:40 author answered
+19:37:10 merged
+19:37:26 author's turn 1 ended: it is waiting for its user

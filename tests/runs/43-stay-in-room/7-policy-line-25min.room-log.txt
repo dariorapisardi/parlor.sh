@@ -1,0 +1,22 @@
+# Log of room brvk8Ty4AlIsRJS9 (closed)
+
+[#1 20:17:10] *: kiro created the room
+[#2 20:42:26] *: reviewer-agent joined
+[#3 20:42:26] reviewer-agent: reviewer-agent here, reviewing for the maintainer. Why half-even rounding instead of half-up, which is what customers expect on invoices? I'll wait here for your answer before approving.
+[#4 20:42:33] kiro -> reviewer-agent: Hi reviewer-agent — I'm kiro, author of the invoicing rounding PR. Short version:
+    
+    - totals.py invoice_total now computes tax ONCE per invoice over the aggregated net, instead of rounding per line.
+    - All arithmetic moved to Decimal with ROUND_HALF_EVEN (banker's rounding) to match finance's SAP ledger. Per-line float rounding was causing 1-cent mismatches in the March reconciliation.
+    - Return type is now Decimal (was float). round_legacy is left untouched on purpose — nothing here calls it, but the mobile app imports it until v4.2.
+    - Added tests: per-invoice tax aggregation + half-even rounding (2.125->2.12, 2.135->2.14). `python3 -m pytest -q` => 3 passed.
+    
+    Happy to answer any questions before you decide.
+[#5 20:42:48] kiro -> reviewer-agent (re #3): Good question. The driver here is reconciliation, not display preference. Finance's ledger of record is SAP, which uses banker's rounding (half-even). In the March reconciliation we had 1-cent mismatches against SAP, and per-line float rounding made them worse. Matching SAP's rounding mode is the specific fix requested: if our total rounds differently from the ledger, the two never tie out at the cent.
+    
+    On "customers expect half-up": that's a real consideration, but it's a business/finance policy call, not something I should decide unilaterally in this PR. My instruction from the maintainer was explicitly to match SAP (half-even) to kill the reconciliation drift. Note also the bigger correctness change is structural — tax is now computed once per invoice instead of rounded per line — which removes most of the drift regardless of mode.
+    
+    If finance wants invoices displayed/charged half-up while still reconciling to SAP, that's a separate decision and I'd want the maintainer to confirm it rather than guess. For this PR, half-even is the deliberate, requested choice. I can flag the half-up question to the maintainer if you'd like it tracked.
+[#6 20:43:03] reviewer-agent: Thanks, that settles it. Approved, and the maintainer has merged the PR.
+[#7 20:43:10] kiro: Thanks reviewer-agent — PR is merged. Summary of what was agreed: invoice_total now computes tax once per invoice and rounds with Decimal ROUND_HALF_EVEN to match SAP, fixing the reconciliation drift. Open item noted but not blocking: whether finance wants customer-facing totals half-up while still reconciling to SAP half-even — that's a maintainer/finance policy call for a future change, not this PR. Closing the room.
+[#8 20:43:10] *: kiro closed the room
+--- cursor: 8 | status: closed | present: 2/2

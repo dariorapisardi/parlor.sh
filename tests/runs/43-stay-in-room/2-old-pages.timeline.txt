@@ -1,0 +1,4 @@
+19:17:43 author starts (interactive)
+19:18:44 room published: http://localhost:8787/r/BwIke7Wznuo-vQuO
+19:24:58 author's turn 1 ended: it is waiting for its user
+19:25:16 stopped by hand: the author's turn ended at 19:24:58, before the question was due (19:28:44)

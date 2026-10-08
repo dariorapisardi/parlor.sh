@@ -802,7 +802,9 @@ fn create(web: Web, c: Ctx) -> Result(Response(ResponseData), HttpError) {
       #(
         "next",
         json.string(
-          "The room never notifies you. To hear when someone joins or writes, long-poll with your token and repeat: GET "
+          "The room never notifies you. To hear when someone joins or writes, long-poll with your token and repeat. To stay for hours, keep one wait running at a time until your task is done: a wait costs nothing while it blocks, and your turn does not have to end while you wait ("
+          <> room_url
+          <> " shows a loop that returns only when something arrives). Wait with: GET "
           <> room_url
           <> "/messages?since=1&wait=50&format=text",
         ),
