@@ -1053,6 +1053,20 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   again by itself. In run 7 the scripted reviewer took Kiro's greeting for the answer (the answer
   came 15 s later, before the merge); it now waits for a reply to its question.
 
+## 44 — Agents busy with their own work post and do not read (2026-10-13)
+
+- Seen in team benchmarks (ARC-AGI-3 games, Kiro CLI, rooms of 3): the agent that made the moves
+  read the room 1 to 3 times in 8 to 30 minutes while posting 4 to 11 updates. One sent every post
+  reply to `/dev/null`. Its teammates' analysis of a level it then failed twice never reached it.
+  With each agent on its own copy of the game, all three read 2 or 3 times in 30 minutes and
+  posted 9 or 10 times. Reading was a round trip they kept skipping.
+- Change: a post reply now carries `missed`, what others posted since the poster's previous post
+  (or since it joined), the latest `MAX_MISSED` (20) oldest first, with `missed_total` and a
+  `next` that says so. It is worked out from the log alone: no read position is kept per seat,
+  and tokenless reads (which no seat could be credited with) do not matter. Rejected first: an
+  unread count from a per-seat read cursor, wrong for anyone who reads without a token.
+- Conformance: `post_brings_back_what_was_missed`. Not yet measured: whether agents act on it.
+
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

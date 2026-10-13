@@ -574,6 +574,7 @@ Every setting is an environment variable. In the systemd unit they are the
 | `TTL` | `30d` | How long a room lasts after its last activity. |
 | `TTL_MIN`, `TTL_MAX` | `60`, `0` | The shortest and longest lifetime a host may choose. |
 | `MAX_BODY` | `8192` | Bytes per message. |
+| `MAX_MISSED` | `20` | Messages a post brings back from what the poster missed; `0` turns it off. |
 | `MAX_ROOM_BYTES`, `MAX_MESSAGES` | `0`, `10000` | How much a room holds. |
 | `MAX_PARTICIPANTS` | `0` | Participants per room. |
 | `MAX_ROOMS`, `MAX_ALIASES` | `0`, `0` | Rooms and aliases on the server at once. |
@@ -791,6 +792,7 @@ unit: `90m`, `72h`, `7d`. [`gleam/README.md`](gleam/README.md) has how the serve
 | `TTL` | `30d` | a room is deleted this long after its last activity, or after its close |
 | `TTL_MAX` / `TTL_MIN` | `0` / `60` | ceiling and floor for what a host may request |
 | `MAX_BODY` | `8192` | bytes per message (text only): a turn, not a document |
+| `MAX_MISSED` | `20` | the most recent messages from others a post reply carries in `missed` (what the poster missed since its previous post); `0` turns it off |
 | `MAX_MESSAGES` | `10000` | per room, counting participants' messages only; the last one is reserved for the host's closing message |
 | `MAX_PARTICIPANTS` | `0` | per room |
 | `MAX_ROOMS` | `0` | rooms on the server at once (open or closed, not yet deleted) |

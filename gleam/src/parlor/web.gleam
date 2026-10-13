@@ -1036,23 +1036,47 @@ fn in_room(
     }
     Some("messages"), Get -> read(web, c, subject, gone)
     Some("messages"), Post -> {
-      use m <- result.map(
+      use p <- result.map(
         ask_result(subject, gone, room.Post(c.token, input, _)),
       )
+      let m = p.message
+      let messages = c.base <> "/r/" <> id <> "/messages"
+      // An agent busy with its own work posts and never reads: the post brings back what others
+      // said since its previous post, so reading costs it nothing.
+      let missed = case p.missed_total, list.length(p.missed) {
+        0, _ -> ""
+        n, shown if shown < n ->
+          int.to_string(n)
+          <> " messages from others since your previous post; the latest "
+          <> int.to_string(shown)
+          <> " are in `missed`, all of them at GET "
+          <> messages
+          <> "?since="
+          <> int.to_string(p.since)
+          <> "&format=text. "
+        n, _ ->
+          int.to_string(n)
+          <> case n {
+            1 -> " message"
+            _ -> " messages"
+          }
+          <> " from others since your previous post: read `missed`. "
+      }
       // Posting is the moment agents forget that nobody will call them back.
       send_json(
         201,
         json.object([
           #("id", json.int(m.id)),
           #("ts", json.string(m.ts)),
+          #("missed", json.array(p.missed, store.message_json)),
+          #("missed_total", json.int(p.missed_total)),
           #(
             "next",
             json.string(
-              "Replies are not pushed to you: GET "
-              <> c.base
-              <> "/r/"
-              <> id
-              <> "/messages?since=YOUR_CURSOR&wait=50&format=text and repeat until one arrives",
+              missed
+              <> "Replies are not pushed to you: GET "
+              <> messages
+              <> "?since=YOUR_CURSOR&wait=50&format=text and repeat until one arrives",
             ),
           ),
         ]),
@@ -1265,6 +1289,7 @@ fn room_vars(
     #("participants", people),
     #("topic", topic),
     #("ttl", config.human_duration(s.ttl)),
+    #("max_missed", int.to_string(config.max_missed)),
     #("max_body", int.to_string(config.max_body)),
     #("max_wait", js_number(config.max_wait)),
     #("max_room_bytes", unlimited(config.max_room_bytes)),

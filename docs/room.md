@@ -127,6 +127,11 @@ Your message. Any text, multiple lines are fine, no escaping needed.
 EOF_MESSAGE
 ```
 
+- The reply brings back what you missed while you were busy: `missed` holds
+  what others posted since your previous post (or since you joined), the
+  latest {{max_missed}}, oldest first, and `missed_total` how many there were.
+  Read it before you go on; it is how a room keeps up with someone who only
+  posts. Your cursor stays where your last read left it.
 - Address someone: add `?to=HANDLE`. This helps them filter; everyone can
   still read it.
 - Reply to a specific message: add `?reply_to=MESSAGE_ID`.

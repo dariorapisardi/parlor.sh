@@ -537,6 +537,22 @@ def post_response(c):
 
 
 @check('contract')
+def post_brings_back_what_was_missed(c):
+    """A post carries what others posted since the poster's previous post (or join), oldest first"""
+    room = c.spare()
+    a, b = c.join(room['id'], 'busy'), c.join(room['id'], 'talker')
+    j = c.say(room['id'], a['token'], 'a1').json()
+    eq([x['body'] for x in j['missed']], ['talker joined'], 'first post: what came after joining')
+    eq(j['missed_total'], 1, 'missed_total')
+    eq([x['body'] for x in c.say(room['id'], b['token'], 'b1').json()['missed']], ['a1'], "the other's first post")
+    j = c.say(room['id'], b['token'], 'b2').json()
+    eq((j['missed'], j['missed_total']), ([], 0), 'nothing new since the previous post')
+    j = c.say(room['id'], a['token'], 'a2').json()
+    eq([x['body'] for x in j['missed']], ['b1', 'b2'], 'both posts, oldest first, none of my own')
+    ok('missed' in j['next'], f'next does not point at missed: {j["next"]}')
+
+
+@check('contract')
 def post_addressing(c):
     """to= and reply_to= are kept; an unknown recipient is a 404, an unknown message a 400"""
     m = c.main()

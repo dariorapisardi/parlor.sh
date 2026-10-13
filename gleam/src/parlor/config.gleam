@@ -24,6 +24,7 @@ pub type Config {
     sweep_every: Int,
     drain_grace_ms: Int,
     max_body: Int,
+    max_missed: Int,
     max_messages: Int,
     max_participants: Int,
     max_rooms: Int,
@@ -61,6 +62,8 @@ pub fn from_env() -> Config {
     sweep_every: seconds(get("SWEEP_EVERY", ""), 30),
     drain_grace_ms: number("DRAIN_GRACE_MS", 250),
     max_body: number("MAX_BODY", 8 * 1024),
+    // How many of the messages a poster missed since their previous post come back with the post.
+    max_missed: number("MAX_MISSED", 20),
     max_messages: number("MAX_MESSAGES", 10_000),
     max_participants: number("MAX_PARTICIPANTS", 0),
     max_rooms: number("MAX_ROOMS", 0),

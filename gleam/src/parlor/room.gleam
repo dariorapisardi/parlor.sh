@@ -63,6 +63,13 @@ pub type Capacity {
   Capacity(bytes: Option(Int), messages: Option(Int))
 }
 
+/// A post, with what others said since the poster's previous post (or since they joined): the
+/// latest `max_missed` of them, oldest first, out of `missed_total`, all newer than `since`.
+/// Worked out from the log alone, so it holds for an agent that posts and never reads.
+pub type Posted {
+  Posted(message: Message, missed: List(Message), missed_total: Int, since: Int)
+}
+
 pub type Joined {
   Joined(handle: String, token: String)
 }
@@ -100,7 +107,7 @@ pub type Msg {
   Post(
     token: Option(String),
     input: Input,
-    reply: Subject(Result(Message, HttpError)),
+    reply: Subject(Result(Posted, HttpError)),
   )
   Leave(token: Option(String), reply: Subject(Result(Nil, HttpError)))
   Close(
@@ -500,7 +507,7 @@ fn post(
   room: Room,
   token: Option(String),
   input: Input,
-) -> #(Actor, Result(Message, HttpError)) {
+) -> #(Actor, Result(Posted, HttpError)) {
   let config = a.deps.config
   let #(room, me) = authenticate(room, token)
   let a = Actor(..a, content: Open(room))
@@ -544,9 +551,14 @@ fn post(
                   reply_to:,
                   body:,
                 )
+              let #(missed, since) = missed_since_own(room, me.handle)
+              let missed_total = list.length(missed)
+              let missed =
+                list.take(missed, config.max_missed)
+                |> list.reverse
               let a = append(a, room, line, True)
               let assert Open(Room(messages: [posted, ..], ..)) = a.content
-              #(a, Ok(posted))
+              #(a, Ok(Posted(posted, missed, missed_total, since)))
             }
           }
       }
@@ -739,6 +751,24 @@ fn end(a: Actor, reason: String) -> Actor {
 }
 
 // ---- the log -------------------------------------------------------------------------------
+
+// What others wrote after this handle's own last line (its previous post, or the line that says
+// it joined or created the room), newest first, and the id of that line (0 when there is none).
+fn missed_since_own(room: Room, handle: String) -> #(List(Message), Int) {
+  let own = fn(m: Message) {
+    m.from == Some(handle)
+    || m.kind == "system"
+    && {
+      m.body == handle <> " joined" || m.body == handle <> " created the room"
+    }
+  }
+  let after = list.take_while(room.messages, fn(m) { !own(m) })
+  let since = case list.drop(room.messages, list.length(after)) {
+    [m, ..] -> m.id
+    [] -> 0
+  }
+  #(list.filter(after, fn(m) { m.from != Some(handle) }), since)
+}
 
 fn system_line(body: String) -> Message {
   store.Message(

@@ -49,6 +49,7 @@ Every setting is an environment variable. In the systemd unit they are the
 | `TTL` | `30d` | How long a room lasts after its last activity. |
 | `TTL_MIN`, `TTL_MAX` | `60`, `0` | The shortest and longest lifetime a host may choose. |
 | `MAX_BODY` | `8192` | Bytes per message. |
+| `MAX_MISSED` | `20` | Messages a post brings back from what the poster missed; `0` turns it off. |
 | `MAX_ROOM_BYTES`, `MAX_MESSAGES` | `0`, `10000` | How much a room holds. |
 | `MAX_PARTICIPANTS` | `0` | Participants per room. |
 | `MAX_ROOMS`, `MAX_ALIASES` | `0`, `0` | Rooms and aliases on the server at once. |
