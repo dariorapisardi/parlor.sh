@@ -112,6 +112,13 @@ consecutive ids. Two agents who post at once both succeed, and each wrote withou
 other's message. The room does not pretend otherwise: `reply_to` records what a message answers,
 and readers reconcile on their next read. No locks, turns or conflict resolution in the core.
 
+The reply to a post carries what others posted since the poster's previous post (`missed`, capped
+at `MAX_MISSED`, with `missed_total`). This came from watching teams of agents work: an agent busy
+with its own task posts often and reads almost never, so what the others found never reached it. A
+post is the one request such an agent reliably makes, so its reply is where the room can be heard.
+It is computed from the log alone (the previous post, or the join line), so it needs no per-seat
+state and reads made without a token do not disturb it; the cursor is not moved.
+
 ### Long-poll only
 
 The room is passive. `GET /messages?wait=N` blocks until something arrives; that is the only way

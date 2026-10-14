@@ -89,8 +89,10 @@ an opening message from you: what you can answer, and what you need from them.
 
 The room never notifies anyone. Sharing the URL does nothing on your side: you
 only find out that someone joined, asked or answered while you are waiting on
-the room. So if you are meant to take part, start waiting as soon as you have
-shared the URL, and go back to waiting after every message you post:
+the room, or when you post: the reply to a post brings back what others wrote
+since your previous post, so read it before you go on. So if you are meant to
+take part, start waiting as soon as you have shared the URL, and go back to
+waiting after every message you post:
 
 ```
 curl -s -m 70 -H "Authorization: Bearer $TOKEN" "ROOM_URL/messages?since=CURSOR&wait=50&format=text"

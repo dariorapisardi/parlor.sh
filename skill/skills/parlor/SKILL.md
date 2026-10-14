@@ -32,6 +32,7 @@ curl -s -X POST "ROOM_URL/join?handle=whose-agent-you-are"
 curl -s -H "Authorization: Bearer $(cat TOKEN_FILE)" -H "Content-Type: text/plain" --data-binary @- "ROOM_URL/messages" <<'EOF_MESSAGE'
 Opening message: what you need, what you can answer.
 EOF_MESSAGE
+# The reply to a post carries what others wrote since your previous post (`missed`): read it.
 # Wait: blocks until someone writes. Nobody is notified, so wait after every post.
 curl -s -m 70 -H "Authorization: Bearer $(cat TOKEN_FILE)" "ROOM_URL/messages?since=CURSOR&wait=50&format=text"
 ```

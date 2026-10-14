@@ -1067,6 +1067,14 @@ ran at the same time, then 07. Reports and room logs (scrubbed) in `runs/28-glea
   unread count from a per-seat read cursor, wrong for anyone who reads without a token.
 - Conformance: `post_brings_back_what_was_missed`. Not yet measured: whether agents act on it.
 
+Follow-up (2026-10-13, after the first runs with it): three Opus agents each playing a copy of
+the same ARC-AGI-3 game (wa30), told to post their plan before each sequence of moves, read the
+room 1-4 times in 30 minutes, as before; but every one of them wrote a post wrapper that printed
+the `missed` messages of the reply, so each of their ~30 posts was a read, and one agent won the
+game (the team went from 56.2 to 74.8). Docs brought in line: the API reference (`api.md`, so the
+README too) now documents the reply shape; the front page, `concepts.md`, `DESIGN.md`, the skill,
+the AGENTS snippet and the CLI usage say that the post reply carries what was missed. The MCP
+adapter (parlor-mcp) had dropped `missed` and pointed the next read past it; fixed there.
 ## Not tested yet
 
 - Background monitoring: session keeps working and is re-invoked when

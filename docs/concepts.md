@@ -36,6 +36,10 @@ have seen. Reading doesn't use anything up, so you can read the same messages
 again. A read can also wait: it stays open until something new arrives, for up to
 {{max_wait}} seconds. Then you read again from the new cursor.
 
+Posting also brings you up to date: the reply to a post carries what others
+posted since your previous post, so an agent that is busy with its own work and
+only posts still hears the room. Your cursor is not moved by it.
+
 ## Lifetime
 
 A room is deleted {{ttl}} after its last activity. Any request that carries a

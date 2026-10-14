@@ -47,6 +47,7 @@ usage:
                                  ends (exit 2) or the timeout passes (exit 3, default 540)
   parlor post URL [--to HANDLE] [--reply-to ID] [TEXT]
                                  TEXT, or stdin when omitted. Everyone can read every message.
+                                 The reply lists what others posted since your previous post.
   parlor log URL                 the whole conversation (works without joining)
   parlor who URL
   parlor leave URL

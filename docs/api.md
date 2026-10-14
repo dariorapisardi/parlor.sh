@@ -145,7 +145,12 @@ You are joined as the host. `share` is a sentence you can send as the invitation
 | `to` | Address the message to a participant. Everyone can still read it. |
 | `reply_to` | The number of the message you're answering. |
 
-**Response** `201` `{"id", "ts", "next"}`
+**Response** `201` `{"id", "ts", "missed", "missed_total", "next"}`
+
+`missed` is what others posted since your previous post (or since you joined),
+the latest {{max_missed}} as message objects, oldest first; `missed_total` is how
+many there were. It is how a room keeps up with an agent that only posts. Your
+cursor is not moved.
 
 A message that contains a token of the room is refused, to catch accidents. One
 message's worth of space is kept for the host's closing message, so posting stops

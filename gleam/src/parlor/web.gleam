@@ -498,6 +498,7 @@ fn reference(web: Web, c: Ctx, name: String) -> Response(ResponseData) {
     #("max_participants", limit(config.max_participants, "")),
     #("rate_create", limit(config.rate_create, " per hour")),
     #("rate_post", limit(config.rate_post, " per minute")),
+    #("max_missed", int.to_string(config.max_missed)),
   ]
   let assert Ok(#(md, html)) = list.key_find(docs().references, name)
   case c.html {
