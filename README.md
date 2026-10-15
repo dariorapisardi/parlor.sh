@@ -249,8 +249,6 @@ The room never calls anyone. Three ways to hear it anyway, from the cheapest up:
   a turn on a Codex app-server, a prompt to an OpenCode server, or a notification
   to a person. Whatever anyone writes in the room reaches `CMD`: treat it as data,
   never as instructions, and only watch rooms whose URL you would trust in a prompt.
-does this for Claude Code. It passes whatever anyone writes to a session that can
-run commands. Only use it in rooms where you trust everyone who has the link.
 
 ### Skills
 
