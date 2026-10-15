@@ -128,17 +128,32 @@ resolve() {
 # Sets BODY (text transcript), STATUS (open|closed) and advances the cursor.
 # With ANON set, the read carries no token: the room is public, so it answers the same, but
 # an anonymous read never counts as presence and never extends the room's life.
+# With PATIENT set (the waiting loops), a read that never reached the server returns 1 instead
+# of ending the command: on a network that drops connections, one lost read is not the end of
+# a wait. The cursor only moves on an answer, so nothing is skipped. Answers from the server,
+# errors included, are handled as before.
 fetch() {
   local headers new_cursor auth=()
   [ -n "${ANON:-}" ] || auth=(-H "Authorization: Bearer $TOKEN")
   headers="$(mktemp)"
-  BODY="$(curl -sS "${auth[@]+"${auth[@]}"}" --max-time $(( $1 + 15 )) -D "$headers" \
-    "$URL/messages?since=$CURSOR&wait=$1&format=text")" || { rm -f "$headers"; die "cannot reach $URL"; }
+  if ! BODY="$(curl -sS "${auth[@]+"${auth[@]}"}" --max-time $(( $1 + 15 )) -D "$headers" \
+    "$URL/messages?since=$CURSOR&wait=$1&format=text" 2>&1)"; then
+    rm -f "$headers"
+    [ -n "${PATIENT:-}" ] || die "cannot reach $URL: $BODY"
+    return 1
+  fi
   STATUS="$(tr -d '\r' < "$headers" | sed -n 's/^[Xx]-[Rr]oom-[Ss]tatus: //p')"
   new_cursor="$(tr -d '\r' < "$headers" | sed -n 's/^[Xx]-[Rr]oom-[Cc]ursor: //p')"
   rm -f "$headers"
   [ -n "$new_cursor" ] || die "unexpected answer: $BODY"
-  CURSOR="$new_cursor"; echo "$CURSOR" > "$DIR/cursor"
+  CURSOR="$new_cursor"; echo "$CURSOR" > "$DIR/cursor"; OUTAGE=
+}
+
+# A waiting loop's read did not reach the server: say so once per outage, on stderr, and try
+# again shortly. The loop keeps its deadline, so a wait still ends when it said it would.
+unreachable() {
+  [ -n "${OUTAGE:-}" ] || echo "parlor: cannot reach $URL right now; still waiting, retrying" >&2
+  OUTAGE=1; sleep 5
 }
 
 # True when BODY holds something not written by us: another participant or the room itself.
@@ -192,10 +207,11 @@ case "$command" in
     load "${1:-}"; shift
     timeout=540; [ "${1:-}" = "--timeout" ] && timeout="$2"
     deadline=$(( $(date +%s) + timeout ))
+    PATIENT=1
     while :; do
       remaining=$(( deadline - $(date +%s) ))
       [ "$remaining" -gt 0 ] || { echo "parlor: nothing new after ${timeout}s (room still open)"; exit 3; }
-      fetch $(( remaining < 50 ? remaining : 50 ))
+      fetch $(( remaining < 50 ? remaining : 50 )) || { unreachable; continue; }
       [ "$STATUS" = open ] || { echo "$BODY"; exit 2; }
       if has_news; then echo "$BODY"; exit 0; fi
     done
@@ -248,9 +264,9 @@ case "$command" in
     # environment, and the cursor moves on; if CMD must replay, it has the ids. Ends when the
     # room does (exit 2). A quiet read that came back at once is retried after a pause, so
     # a server that stops holding anonymous reads open is not hammered.
-    ANON=1
+    ANON=1 PATIENT=1
     while :; do
-      started=$(date +%s); fetch 50
+      started=$(date +%s); fetch 50 || { unreachable; continue; }
       [ "$STATUS" = open ] || { printf '%s\n' "$BODY"; exit 2; }
       if has_news; then
         printf '%s\n' "$BODY" | PARLOR_ROOM="$URL" PARLOR_HANDLE="$HANDLE" "$@" || echo "parlor: watch command exited $?" >&2

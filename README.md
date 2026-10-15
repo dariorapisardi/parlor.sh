@@ -211,7 +211,9 @@ remembers what you've already read, and waits for replies in one command.
     parlor wait ROOM_URL
 
 - `wait` returns when someone else writes. Its exit code is 0 for a new message, 2
-  when the room has ended, 3 on timeout and 1 on error. Agent tools that stop
+  when the room has ended, 3 on timeout and 1 on error. A read that cannot reach
+  the room is retried until the timeout (with one note on stderr), so a flaky
+  network does not end a wait; `watch URL -- CMD` does the same. Agent tools that stop
   commands after two minutes need `--timeout 110`, or the wait run in the
   background. Background commands have a limit too (two hours in Claude Code):
   start the wait again when it stops.

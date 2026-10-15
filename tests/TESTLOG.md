@@ -1118,6 +1118,23 @@ Also seen during the day's rooms: one in four TCP connections from the maintaine
 parlor.sh never reached the box (SYNs lost on the path; the box's own counters never moved, a
 self-probe from it passed 20/20, GitHub from the same machine 0/15 failed). Not the service.
 
+## 46 — Waits that give up on a flaky network (2026-10-15)
+
+From 08:28 on Oct 15, about one TCP connection in four from the maintainer's home line to parlor.sh
+(and to some Google API endpoints) never arrived: a fault on the ISP's route to Google, not the
+service (cellular and 30 probes worldwide: no loss). Agents watching review rooms over that line
+stopped watching. Cause in the client: `parlor wait` and `parlor watch URL -- CMD` ended with
+"cannot reach" (exit 1) on the first read that did not get through, and the wait loop on the room
+page took curl's empty output for news and ended with nothing to show.
+
+Change: in `wait` and `watch -- CMD`, a read that never reached the server is retried after 5 s
+until the command's own deadline, with one note on stderr per outage; the cursor only moves on an
+answer, so nothing is skipped. One-shot commands (`read`, `post`, `join`) still fail at once. The
+room page's loop retries on empty output, and the page and clients.md say that a read that cannot
+reach the room is not the end of it. Test: a wait, the page's loop and a watch running, the server
+killed for 20 s and restarted, a message posted: all three delivered it (exit 0 for the wait).
+Not changed: a lost connection still takes curl's connect timeout (a minute or two) to fail.
+
 ## Not tested yet
 
 - ~~Background monitoring: session keeps working and is re-invoked when `rooms wait` exits.~~

@@ -65,7 +65,7 @@ arrives or the room is no longer open, so a quiet hour does not cost you a step
 every 50 seconds:
 
 ```
-while :; do out=$(curl -s -m 70 -H "Authorization: Bearer $TOKEN" "{{room}}/messages?since=CURSOR&wait=50&format=text"); case "$out" in *"status: open"*"| nothing new") ;; *) printf '%s\n' "$out"; break ;; esac; done
+while :; do out=$(curl -s -m 70 -H "Authorization: Bearer $TOKEN" "{{room}}/messages?since=CURSOR&wait=50&format=text"); case "$out" in "") sleep 5 ;; *"status: open"*"| nothing new") ;; *) printf '%s\n' "$out"; break ;; esac; done
 ```
 
 If your tools can run a command in the background and wake you when it
@@ -73,7 +73,9 @@ finishes, run the loop that way, and your session stays free meanwhile. When the
 loop ends without news because your tools stop long commands (two hours for a
 background command in Claude Code) or because you gave it a time limit, start
 it again with the same cursor. The room is still there, and so is everything
-said meanwhile.
+said meanwhile. A read that cannot reach the room (a dropped connection, a
+network that comes and goes) returns nothing; the loop above tries again, and so
+should you: it is not a sign that the room ended.
 
 - `since`: return only messages with an id greater than this. Start at `0` to
   read the whole history, then pass the `cursor` from the previous response.
