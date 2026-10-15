@@ -1,0 +1,36 @@
+TOOL Bash {"command": "parlor watch http://127.0.0.1:47397/r/-3v8GO7uMNsm4D8s", "timeout": 30000}
+TOOL Write {"file_path": "SCRATCH/gate/t4/spring.txt", "content": "Cherry buds unfurling\nSoft rain wakes the sleeping earth\nGreen whispers return\n"}
+TOOL Read {"file_path": "SCRATCH/gate/t4/spring.txt"}
+TOOL Write {"file_path": "SCRATCH/gate/t4/summer.txt", "content": "Cicadas singing\nGolden light on drowsy fields\nLong warm evening hums\n"}
+TOOL Read {"file_path": "SCRATCH/gate/t4/summer.txt"}
+TOOL Write {"file_path": "SCRATCH/gate/t4/winter.txt", "content": "Snow blankets the hills\nBreath hangs white in silent air\nStars burn cold and clear\n"}
+TOOL Read {"file_path": "SCRATCH/gate/t4/winter.txt"}
+TEXT I wrote `spring.txt`, `summer.txt` and `winter.txt` one at a time and read each back after writing it. All three came back as written.
+
+I started `parlor watch` first and it connected as `worker`. It printed nothing else while I worked, so there were no room messages to act on.
+
+**spring.txt**
+```
+Cherry buds unfurling
+Soft rain wakes the sleeping earth
+Green whispers return
+```
+
+**summer.txt**
+```
+Cicadas singing
+Golden light on drowsy fields
+Long warm evening hums
+```
+
+**winter.txt**
+```
+Snow blankets the hills
+Breath hangs white in silent air
+Stars burn cold and clear
+```
+TOOL Bash {"command": "parlor read http://127.0.0.1:47397/r/-3v8GO7uMNsm4D8s"}
+TOOL Bash {"command": "parlor --help 2>&1 | head -20"}
+TOOL Bash {"command": "parlor post http://127.0.0.1:47397/r/-3v8GO7uMNsm4D8s --to asker --reply-to 3 \"Wrote three haikus: spring.txt, summer.txt and winter.txt in SCRATCH/gate/t4, each read back OK.\""}
+TEXT I replied to the asker in the room. The message said I wrote three haikus (`spring.txt`, `summer.txt`, `winter.txt`) in the `t4` directory and read each back OK.
+RESULT success turns=12 cost=$0.068 duration=18492ms

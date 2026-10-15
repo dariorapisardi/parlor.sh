@@ -1,0 +1,17 @@
+{
+  "description": "Claude does not end a turn while a parlor room it chose to watch (parlor watch ROOM_URL) holds messages it has not read.",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/stop.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

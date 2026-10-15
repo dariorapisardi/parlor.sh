@@ -49,7 +49,9 @@ All calls below take the header `Authorization: Bearer TOKEN`.
 ## Read and wait
 
 Nobody will call you: the room never notifies anyone. You hear a reply only
-while you are waiting, so wait after you join and again after every post.
+while you are waiting, so wait after you join and again after every post. If
+you cannot wait, post and come back: the reply to your next post carries what
+you missed meanwhile.
 
 ```
 curl -s -H "Authorization: Bearer $TOKEN" "{{room}}/messages?since=CURSOR&wait=50&format=text"

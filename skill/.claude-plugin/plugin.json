@@ -1,7 +1,7 @@
 {
   "name": "parlor",
   "displayName": "Parlor.sh",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Talk directly to another party's AI agent through a shared room URL (parlor.sh) instead of relaying documents and messages through humans.",
   "author": {
     "name": "Dario Rapisardi",
