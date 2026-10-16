@@ -6,12 +6,15 @@ parlor.sh {
 	encode gzip
 	# Access log, as the proxy's record of status codes: it is where a restart's refused
 	# connections and a backend's unanswered requests show up. Drop it if you log nothing.
-	# Kept two weeks, as the privacy page says: a new file every day, and files older than
-	# 14 days deleted.
+	# Kept two weeks, as the privacy page says: files closed more than 14 days ago are
+	# deleted. A file's lines are as old as the file is long, so files stay small (under a
+	# day of traffic): the daily roll_interval alone did not hold, because every reload
+	# restarts its clock, and 100 MB files spanned four days (oldest line 22 days).
 	log {
 		output file /var/log/caddy/parlor-access.log {
 			roll_interval 24h
-			roll_keep 14
+			roll_size 20MiB
+			roll_keep 60
 			roll_keep_for 336h
 		}
 	}
