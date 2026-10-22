@@ -8,8 +8,9 @@ parlor.sh {
 	# connections and a backend's unanswered requests show up. Drop it if you log nothing.
 	# Kept two weeks, as the privacy page says: files closed more than 14 days ago are
 	# deleted. A file's lines are as old as the file is long, so files stay small (under a
-	# day of traffic): the daily roll_interval alone did not hold, because every reload
-	# restarts its clock, and 100 MB files spanned four days (oldest line 22 days).
+	# day of traffic). Caddy keeps an open log file's settings across reloads: a change
+	# here takes effect only after `systemctl restart caddy` (until 2026-10-22 the box ran
+	# its first config's defaults, 100 MB files kept 90 days, oldest line 29 days).
 	log {
 		output file /var/log/caddy/parlor-access.log {
 			roll_interval 24h
