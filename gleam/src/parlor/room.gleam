@@ -500,7 +500,8 @@ fn join(
   }
 }
 
-const full_hint = "Only the host can end it, with a last message (POST /close with a body), usually pointing to a new room. Wait for that, or start a new room."
+const full_hint =
+  "Only the host can end it, with a last message (POST /close with a body), usually pointing to a new room. Wait for that, or start a new room."
 
 fn post(
   a: Actor,
@@ -618,8 +619,9 @@ fn post_checked(
           Error(fail.new(
             404,
             "no participant \"" <> raw_to <> "\"",
-            "Participants: "
-              <> list.map(room.state.participants, fn(p) { p.handle })
+            "Participants still here: "
+              <> list.filter(room.state.participants, fn(p) { !p.left })
+            |> list.map(fn(p) { p.handle })
             |> string.join(", "),
           ))
       }

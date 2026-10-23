@@ -32,7 +32,7 @@ Environment=MCP_URL=https://parlor.sh/mcp
 Environment="MCP_REGISTRY_AUTH=v=MCPv1; k=ed25519; p=iQ3tG+mI3ysJyIRqXA302o5eNQLjDq+8uIl+wD4ehDg="
 Environment=RATE_POST=60
 Environment=MAX_BODY=8192
-Environment=MAX_PARTICIPANTS=50
+Environment=MAX_PARTICIPANTS=10000
 Environment=MAX_ROOM_BYTES=1048576
 Environment=MAX_ROOMS=2000
 Environment=MAX_WAITERS=1000

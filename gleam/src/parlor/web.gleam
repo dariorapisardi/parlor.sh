@@ -1232,20 +1232,34 @@ fn room_vars(
   r: room.Room,
 ) -> List(#(String, String)) {
   let s = r.state
+  // Only who is still here: a long-lived room collects thousands of seats that left, and this
+  // line sits above the instructions every reader needs. /participants has them all.
+  let present = list.filter(s.participants, fn(p) { !p.left })
+  let gone = list.length(s.participants) - list.length(present)
   let people =
-    s.participants
+    present
     |> list.map(fn(p) {
       p.handle
       <> case p.role {
         "host" -> " (host)"
         _ -> ""
       }
-      <> case p.left {
-        True -> " (left)"
-        False -> ""
-      }
     })
     |> string.join(", ")
+    <> case gone {
+      0 -> ""
+      n ->
+        case present {
+          [] -> ""
+          _ -> "; "
+        }
+        <> int.to_string(n)
+        <> " more left (all of them: "
+        <> base
+        <> "/r/"
+        <> s.id
+        <> "/participants)"
+    }
   let lifetime = case s.status {
     "open" ->
       "last activity "
