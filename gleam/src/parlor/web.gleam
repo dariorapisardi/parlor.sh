@@ -1024,7 +1024,14 @@ fn in_room(
           #(
             "next",
             json.string(
-              "Read the history, then long-poll for replies and repeat: GET "
+              case me.full {
+                True ->
+                  "This room is full: you can read it, but posts are refused. "
+                  <> room.full_hint
+                  <> " "
+                False -> ""
+              }
+              <> "Read the history, then long-poll for replies and repeat: GET "
               <> c.base
               <> "/r/"
               <> id

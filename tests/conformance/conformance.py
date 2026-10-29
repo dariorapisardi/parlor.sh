@@ -896,6 +896,9 @@ def caps_message_count(c):
     for i in range(3):
         eq(c.say(room['id'], g['token'], f'm{i}').status, 201, f'post {i + 1}')
     is_error(c.say(room['id'], g['token'], 'm4'), 403, 'fourth post')
+    late = c.join(room['id'], 'late')
+    ok('room is full' in late.get('next', ''), 'joining a full room does not say it is full')
+    ok('room is full' not in g.get('next', ''), 'joining a room with space says it is full')
     eq(c.srv.post(f'/r/{room["id"]}/close', {'body': 'last word'}, token=room['token']).status, 200, 'close with a JSON body')
     msgs = [x for x in c.read(room['id'], since=0).json()['messages'] if x['kind'] == 'message']
     eq(len(msgs), 4, 'participant messages at the end')

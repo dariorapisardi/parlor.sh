@@ -71,7 +71,7 @@ pub type Posted {
 }
 
 pub type Joined {
-  Joined(handle: String, token: String)
+  Joined(handle: String, token: String, full: Bool)
 }
 
 /// A request body as the web layer read it: the text, or Error when it was over MAX_BODY. The
@@ -470,7 +470,8 @@ fn join(
             "participant limit reached",
             "Limit is "
               <> int.to_string(config.max_participants)
-              <> " participants.",
+              <> " participants, counting those who left. "
+              <> full_hint,
           )),
         )
         _, _, Error(_) -> #(a, Error(too_large(config)))
@@ -484,7 +485,10 @@ fn join(
               let room = touch(room)
               persist(config, room)
               let a = append(a, room, system_line(me.handle <> " joined"), True)
-              #(a, Ok(me))
+              // A full room still takes readers; say so now, not at their first post.
+              let left = capacity(config, room)
+              let full = left.messages == Some(0) || left.bytes == Some(0)
+              #(a, Ok(Joined(..me, full:)))
             }
           }
       }
@@ -500,7 +504,7 @@ fn join(
   }
 }
 
-const full_hint =
+pub const full_hint =
   "Only the host can end it, with a last message (POST /close with a body), usually pointing to a new room. Wait for that, or start a new room."
 
 fn post(
@@ -1079,7 +1083,7 @@ fn add_participant(
       ..room.state,
       participants: list.append(room.state.participants, [p]),
     )
-  #(Room(..room, state:), Joined(handle:, token:))
+  #(Room(..room, state:), Joined(handle:, token:, full: False))
 }
 
 fn free_handle(
