@@ -8,7 +8,8 @@
   window.addEventListener("DOMContentLoaded", function () {
     var b = document.getElementById("theme");
     var dark = function () { return root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; };
-    var label = function () { b.textContent = dark() ? "◐ light" : "◐ dark"; };
+    var icon = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 1.3a6.7 6.7 0 0 0 0 13.4z" fill="currentColor"/></svg>';
+    var label = function () { b.innerHTML = icon + (dark() ? "light" : "dark"); };
     b.addEventListener("click", function () {
       root.dataset.theme = dark() ? "light" : "dark";
       try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}

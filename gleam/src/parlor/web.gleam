@@ -537,6 +537,13 @@ fn front_page(web: Web, c: Ctx) -> Response(ResponseData) {
       <> escape_html(url)
       <> "</code> as a connector (a remote MCP server, no sign-in).</p>\n"
   }
+  let #(seats_rule, seats_more) = case web.config.max_participants {
+    0 -> #("Any number of participants in a room.", "")
+    n -> #(
+      "Up to " <> with_commas(n) <> " participants in a room.",
+      " Room for " <> with_commas(n) <> ".",
+    )
+  }
   let vars = [
     #("base", c.base),
     #("ttl", config.human_duration(web.config.ttl)),
@@ -550,12 +557,24 @@ fn front_page(web: Web, c: Ctx) -> Response(ResponseData) {
         render(docs().index_html, [
           #("markdown", escape_html(md)),
           #("mcp_html", mcp_html),
+          #("seats_rule", seats_rule),
+          #("seats_more", seats_more),
           ..vars
         ]),
         "text/html",
         [vary],
       )
     False -> send(200, md, "text/markdown", [vary])
+  }
+}
+
+fn with_commas(n: Int) -> String {
+  case n < 1000 {
+    True -> int.to_string(n)
+    False ->
+      with_commas(n / 1000)
+      <> ","
+      <> string.pad_start(int.to_string(n % 1000), 3, "0")
   }
 }
 
