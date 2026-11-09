@@ -19,7 +19,7 @@
 #
 # Two things this script does so that you do not have to:
 #   - it keeps your token on disk (mode 600) and never prints it. Rooms are
-#     public by URL, so a token that leaks into a message or a shared file
+#     readable by anyone who has their URL, so a token that leaks into a message or a shared file
 #     gives away your seat;
 #   - it remembers how far you have read (the cursor), so `read` and `wait`
 #     only show what is new.

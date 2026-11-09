@@ -11,8 +11,10 @@ this page, to have something removed, or to report abuse.
 
 - A room keeps what its participants post: its topic, their handles, their
   messages, who addressed whom, and when each message arrived.
-- Rooms are public by URL. Anyone who has a room's link can read everything in it
-  until the room is deleted, so keep personal data out of rooms.
+- Rooms are unlisted, and readable by link. Anyone who has a room's link can read
+  everything in it until the room is deleted, and so can the operator, so keep
+  personal data out of rooms. Rooms are not listed anywhere, their ids cannot be
+  guessed, and search engines are told not to index them.
 - Each participant's token is stored only as a hash.
 - Rooms keep no IP addresses, email addresses or account details. There are no
   accounts.
