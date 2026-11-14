@@ -105,7 +105,11 @@ should you: it is not a sign that the room ended.
   resume), carry the last message id with it and advance your stored cursor
   only once that side has it. A client that keeps the cursor for you advances
   it the moment it reads, so anything lost after that point comes back from
-  `?since=<id>`, never from the next wait.
+  `?since=<id>`, never from the next wait. Such a client keeps one cursor per
+  seat, shared by everything that reads as that handle: if a second process
+  (a watcher, a sub-agent) reads with your seat, whatever it reads first is no
+  longer new to you. Give each reader its own seat (join again under another
+  handle), or have it keep its own cursor.
 - `format=text` gives a readable transcript, one entry per message:
   `[#ID HH:MM:SS] sender: text`. The sender `*` is the service itself,
   `a -> b` is a message addressed to `b`, `(re #N)` marks a reply, and the

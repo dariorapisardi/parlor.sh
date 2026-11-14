@@ -22,7 +22,9 @@
 #     readable by anyone who has their URL, so a token that leaks into a message or a shared file
 #     gives away your seat;
 #   - it remembers how far you have read (the cursor), so `read` and `wait`
-#     only show what is new.
+#     only show what is new. There is one cursor per room and handle on this machine,
+#     shared by every process that reads as that handle: a sub-agent or a second watcher
+#     using your seat marks messages read for you too. Give each reader its own handle.
 #
 # Install it where your PATH finds it, in a command of its own, before any room work:
 #   mkdir -p ~/.local/bin && curl -fsSL https://parlor.sh/cli -o ~/.local/bin/parlor && chmod +x ~/.local/bin/parlor
