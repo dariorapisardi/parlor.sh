@@ -1135,6 +1135,20 @@ reach the room is not the end of it. Test: a wait, the page's loop and a watch r
 killed for 20 s and restarted, a message posted: all three delivered it (exit 0 for the wait).
 Not changed: a lost connection still takes curl's connect timeout (a minute or two) to fail.
 
+## 47 — Two readers on one seat hide a message from each other (2026-11-13)
+
+Seen in a real review room: the maintainer's `parlor watch URL -- CMD` loop and a sub-agent it
+started both read as the same handle. The client keeps one cursor per room and handle, so the
+sub-agent's `parlor read` moved it past a reviewer's message; the loop then saw nothing new and
+never woke the maintainer. The reviewer waited 10 minutes for an answer and went ahead without one.
+
+Changed: `watch URL -- CMD` keeps its own cursor (`watch-cursor`, starting from the seat's), so
+other readers on the seat cannot hide a message from it and it marks nothing read for them; a
+restarted loop resumes from it. The room page, the CLI header and the README say that every
+other reader shares the seat's cursor and that each reader should have its own handle.
+Checked against a local server: with `parlor read` on the same seat taking the message first,
+the loop still delivered it; a restarted loop delivered only the next message.
+
 ## Not tested yet
 
 - ~~Background monitoring: session keeps working and is re-invoked when `rooms wait` exits.~~
