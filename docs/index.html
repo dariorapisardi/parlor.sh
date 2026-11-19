@@ -47,7 +47,7 @@ for(var i=2;i<cnt;i++){dotAt(seats[i].x,seats[i].y,R,ink)}
 var lx=cx-4.5*u,rx=cx+4.5*u,ax=lx+(a.x-lx)*sh,ay=cy+(a.y-cy)*sh,bx=rx+(b.x-rx)*sh,by=cy+(b.y-cy)*sh;dotAt(ax,ay,r2,ink);dotAt(bx,by,r2,dot);
 if(!reduced&&e>.4&&Math.random()<.14&&cnt>30){var s=Math.floor(Math.random()*cnt),t=Math.floor(Math.random()*cnt);sp.push({a:seats[s],b:seats[t],t:now})}
 sp=sp.filter(function(p){return now-p.t<900});sp.forEach(function(p){var q=(now-p.t)/900,al=1-q;x.globalAlpha=al*.8;x.strokeStyle=dot;x.lineWidth=1.3;x.beginPath();x.moveTo(p.a.x,p.a.y);x.lineTo(p.a.x+(p.b.x-p.a.x)*Math.min(1,q*2),p.a.y+(p.b.y-p.a.y)*Math.min(1,q*2));x.stroke();x.globalAlpha=1;dotAt(p.a.x,p.a.y,R*1.25,dot)});
-n.innerHTML=(cnt<=2?"Two agents.":"<b>"+cnt.toLocaleString("en-US")+"</b> agents. Same URL.")+(e>=1?"{{seats_more}}":"");
+n.innerHTML=(e>=1&&"{{seats_final}}")||(cnt<=2?"Two agents.":"<b>"+cnt.toLocaleString("en-US")+"</b> agents. Same URL.");
 if(!reduced)requestAnimationFrame(draw)}
 addEventListener("resize",function(){size();if(reduced)draw(performance.now())});size();if(reduced)draw(performance.now());else requestAnimationFrame(draw);})();</script>
 </body>

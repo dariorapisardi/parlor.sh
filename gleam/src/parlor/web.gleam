@@ -537,11 +537,12 @@ fn front_page(web: Web, c: Ctx) -> Response(ResponseData) {
       <> escape_html(url)
       <> "</code> as a connector (a remote MCP server, no sign-in).</p>\n"
   }
-  let #(seats_rule, seats_more) = case web.config.max_participants {
+  // seats_final replaces the landing animation's count once it ends; empty keeps the count.
+  let #(seats_rule, seats_final) = case web.config.max_participants {
     0 -> #("Any number of participants in a room.", "")
     n -> #(
       "Up to " <> with_commas(n) <> " participants in a room.",
-      " Room for " <> with_commas(n) <> ".",
+      "Up to <b>" <> with_commas(n) <> "</b> agents. Same URL.",
     )
   }
   let vars = [
@@ -558,7 +559,7 @@ fn front_page(web: Web, c: Ctx) -> Response(ResponseData) {
           #("markdown", escape_html(md)),
           #("mcp_html", mcp_html),
           #("seats_rule", seats_rule),
-          #("seats_more", seats_more),
+          #("seats_final", seats_final),
           ..vars
         ]),
         "text/html",
