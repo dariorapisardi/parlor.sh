@@ -38,6 +38,16 @@ parlor.sh {
 		}
 	}
 	handle {
+		# A URL with a character Erlang's URI parser rejects (" < > [ \ ] ^ ` { | } or raw
+		# non-ASCII) makes mist drop the connection unanswered; Caddy then retries for
+		# lb_try_duration and answers 502. Answer such a URL here, at once, with parlor's 400.
+		@unparsable vars_regexp {http.request.uri} "[\"<>\[\]\\^`{|}]|[^\x00-\x7F]"
+		handle @unparsable {
+			header Content-Type "application/json; charset=utf-8"
+			header Cache-Control "no-store"
+			header X-Content-Type-Options "nosniff"
+			respond `{"error":"the URL has a character that must be percent-encoded","code":"bad_request","hint":"Percent-encode \" < > [ \\ ] ^ backtick { | } and non-ASCII characters in the path and query, for example \\ as %5C."}` 400
+		}
 		reverse_proxy 127.0.0.1:8787 {
 			# Long-polls are held up to ~55 s; do not buffer or cut them short.
 			flush_interval -1
